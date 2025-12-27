@@ -1,60 +1,36 @@
 export type ProgramKey = 'omsa' | 'omscs' | 'omscsec';
 
-export type TermKey = 'fall' | 'spring' | 'summer';
-
-export const TERMS: Record<TermKey, { label: string }> = {
-  fall: { label: 'Fall' },
-  spring: { label: 'Spring' },
-  summer: { label: 'Summer' }
+export const PROGRAM_LABELS: Record<ProgramKey, string> = {
+  omsa: 'MS in Analytics (OMSA)',
+  omscs: 'MS in Computer Science (OMSCS)',
+  omscsec: 'MS in Cybersecurity (OMSCSEC)'
 };
 
-/**
- * Tuition rates sourced from official Georgia Tech program tuition pages.
- * OMSA: https://pe.gatech.edu/degrees/online-master-science-analytics/tuition
- * OMSCS: https://omscs.gatech.edu/program-info/tuition
- * OMSCSEC: https://pe.gatech.edu/degrees/cybersecurity/online/tuition
- */
-export const PROGRAMS: Record<
-  ProgramKey,
-  { name: string; tuitionPerCredit: number; sourceUrl: string }
-> = {
-  omsa: {
-    name: 'MS in Analytics (OMSA)',
-    tuitionPerCredit: 275,
-    sourceUrl: 'https://pe.gatech.edu/degrees/online-master-science-analytics/tuition'
-  },
-  omscs: {
-    name: 'MS in Computer Science (OMSCS)',
-    tuitionPerCredit: 180,
-    sourceUrl: 'https://omscs.gatech.edu/program-info/tuition'
-  },
-  omscsec: {
-    name: 'MS in Cybersecurity (OMSCSEC)',
-    tuitionPerCredit: 485,
-    sourceUrl: 'https://pe.gatech.edu/degrees/cybersecurity/online/tuition'
-  }
+export const perCreditRateByProgram: Record<ProgramKey, number> = {
+  omsa: 327,
+  omscs: 225,
+  omscsec: 369
 };
 
-/**
- * Online Learning Fee rules sourced from the Georgia Tech Bursar fee schedule.
- * https://www.bursar.gatech.edu/tuition-fees
- */
-export const ONLINE_LEARNING_FEE_BY_TERM: Record<
-  TermKey,
-  { fee: number; sourceUrl: string }
-> = {
-  fall: {
-    fee: 301,
-    sourceUrl: 'https://www.bursar.gatech.edu/tuition-fees'
-  },
-  spring: {
-    fee: 301,
-    sourceUrl: 'https://www.bursar.gatech.edu/tuition-fees'
-  },
-  summer: {
-    fee: 301,
-    sourceUrl: 'https://www.bursar.gatech.edu/tuition-fees'
-  }
+export const degreeCreditsByProgram: Record<ProgramKey, number> = {
+  omsa: 36,
+  omscs: 30,
+  omscsec: 30
 };
 
-export const MAX_CREDITS = 18;
+export const onlineLearningFeeRule = {
+  thresholdCredits: 4,
+  belowThresholdFee: 176,
+  atOrAboveThresholdFee: 440
+};
+
+export const MAX_CREDITS_PER_TERM = 21;
+export const MAX_TERMS = 30;
+export const TERMS_PER_YEAR_OPTIONS = [2, 3] as const;
+
+export const PROGRAMS = Object.entries(PROGRAM_LABELS).map(([key, label]) => ({
+  key: key as ProgramKey,
+  label,
+  perCreditRate: perCreditRateByProgram[key as ProgramKey],
+  degreeCredits: degreeCreditsByProgram[key as ProgramKey]
+}));

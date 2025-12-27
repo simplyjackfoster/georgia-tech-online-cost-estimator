@@ -1,60 +1,95 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScenarioCard } from './components/ScenarioCard';
-import { PROGRAMS, TermKey, TERMS } from './data/rates';
-import { calculateScenario, formatCurrency, ScenarioInput, validateScenario } from './lib/calc';
+import {
+  PROGRAMS,
+  degreeCreditsByProgram,
+  onlineLearningFeeRule,
+  perCreditRateByProgram
+} from './data/rates';
+import {
+  calculateFullDegree,
+  calculatePerTerm,
+  formatCurrency,
+  getProgramCredits,
+  type Mode,
+  type ScenarioInput,
+  validateScenario
+} from './lib/calc';
 
+// React + Vite keeps the calculator fast, offline-friendly, and easy to ship as a static bundle.
 const DEFAULT_SCENARIO: ScenarioInput = {
   id: 'base',
+  label: 'Fall 2026',
   programKey: 'omscs',
   credits: 3,
-  term: 'fall'
+  creditsPerTerm: 3,
+  terms: 6,
+  useAutoTerms: true,
+  termsPerYear: 3
 };
 
 const MAX_SCENARIOS = 3;
 
-const serializeScenario = (scenario: ScenarioInput): string =>
-  [scenario.programKey, scenario.credits, scenario.term].join(',');
+const serializeScenario = (scenario: ScenarioInput, index: number, params: URLSearchParams) => {
+  params.set(`s${index}p`, scenario.programKey);
+  params.set(`s${index}c`, String(scenario.credits));
+  params.set(`s${index}cpt`, String(scenario.creditsPerTerm));
+  params.set(`s${index}t`, String(scenario.terms));
+  params.set(`s${index}a`, scenario.useAutoTerms ? '1' : '0');
+  params.set(`s${index}y`, String(scenario.termsPerYear));
+  params.set(`s${index}l`, scenario.label);
+};
 
-const parseScenario = (value: string, id: string): ScenarioInput | null => {
-  const [programKey, creditsRaw, term] = value.split(',');
-  if (!programKey || !(programKey in PROGRAMS)) {
+const parseScenario = (params: URLSearchParams, index: number): ScenarioInput | null => {
+  const programKey = params.get(`s${index}p`);
+  const credits = Number(params.get(`s${index}c`));
+  const creditsPerTerm = Number(params.get(`s${index}cpt`));
+  const terms = Number(params.get(`s${index}t`));
+  const useAutoTerms = params.get(`s${index}a`) === '1';
+  const termsPerYear = Number(params.get(`s${index}y`));
+  const label = params.get(`s${index}l`) ?? '';
+
+  if (!programKey || !(programKey in perCreditRateByProgram)) {
     return null;
   }
-  if (!term || !(term in TERMS)) {
-    return null;
-  }
-  const credits = Number(creditsRaw);
-  if (!Number.isFinite(credits)) {
-    return null;
-  }
+
   return {
-    id,
-    programKey: programKey as keyof typeof PROGRAMS,
-    credits,
-    term: term as TermKey
+    id: `shared-${index}`,
+    label: label || `Scenario ${index + 1}`,
+    programKey: programKey as ScenarioInput['programKey'],
+    credits: Number.isFinite(credits) ? credits : DEFAULT_SCENARIO.credits,
+    creditsPerTerm: Number.isFinite(creditsPerTerm) ? creditsPerTerm : DEFAULT_SCENARIO.creditsPerTerm,
+    terms: Number.isFinite(terms) ? terms : DEFAULT_SCENARIO.terms,
+    useAutoTerms,
+    termsPerYear: termsPerYear === 2 ? 2 : 3
   };
 };
 
-const buildShareUrl = (scenarios: ScenarioInput[]): string => {
+const buildShareUrl = (mode: Mode, scenarios: ScenarioInput[]): string => {
   const params = new URLSearchParams();
+  params.set('mode', mode);
   scenarios.forEach((scenario, index) => {
-    params.set(`s${index}`, serializeScenario(scenario));
+    serializeScenario(scenario, index, params);
   });
   const query = params.toString();
   return `${window.location.origin}${window.location.pathname}${query ? `?${query}` : ''}`;
 };
 
 const App: React.FC = () => {
+  const [mode, setMode] = useState<Mode>('per-term');
   const [scenarios, setScenarios] = useState<ScenarioInput[]>([DEFAULT_SCENARIO]);
   const [shareStatus, setShareStatus] = useState<string>('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get('mode');
+    if (modeParam === 'full-degree') {
+      setMode('full-degree');
+    }
     const parsed: ScenarioInput[] = [];
     for (let index = 0; index < MAX_SCENARIOS; index += 1) {
-      const value = params.get(`s${index}`);
-      if (value) {
-        const scenario = parseScenario(value, `shared-${index}`);
+      if (params.get(`s${index}p`)) {
+        const scenario = parseScenario(params, index);
         if (scenario) {
           parsed.push(scenario);
         }
@@ -65,17 +100,37 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const outputs = useMemo(
-    () => scenarios.map((scenario) => calculateScenario(scenario)),
+  const perTermOutputs = useMemo(
+    () => scenarios.map((scenario) => calculatePerTerm(scenario.programKey, scenario.credits)),
+    [scenarios]
+  );
+
+  const fullDegreeOutputs = useMemo(
+    () =>
+      scenarios.map((scenario) =>
+        calculateFullDegree(
+          scenario.programKey,
+          getProgramCredits(scenario.programKey),
+          scenario.creditsPerTerm,
+          scenario.terms,
+          scenario.useAutoTerms,
+          scenario.termsPerYear
+        )
+      ),
     [scenarios]
   );
 
   const validations = useMemo(
-    () => scenarios.map((scenario) => validateScenario(scenario)),
-    [scenarios]
+    () => scenarios.map((scenario) => validateScenario(scenario, mode)),
+    [scenarios, mode]
   );
 
-  const comparisonTotal = outputs.reduce((sum, output) => sum + output.total, 0);
+  const comparisonTotal = perTermOutputs.reduce((sum, output, index) => {
+    if (mode === 'per-term') {
+      return sum + output.total;
+    }
+    return sum + fullDegreeOutputs[index].totalCost;
+  }, 0);
 
   const updateScenario = (updated: ScenarioInput) => {
     setScenarios((prev) => prev.map((scenario) => (scenario.id === updated.id ? updated : scenario)));
@@ -91,9 +146,35 @@ const App: React.FC = () => {
         {
           ...DEFAULT_SCENARIO,
           id: `scenario-${prev.length + 1}`,
+          label: `Scenario ${prev.length + 1}`,
           programKey: prev[0]?.programKey ?? 'omscs'
         }
       ];
+    });
+  };
+
+  const duplicateScenario = (scenario: ScenarioInput) => {
+    setScenarios((prev) => {
+      if (prev.length >= MAX_SCENARIOS) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          ...scenario,
+          id: `scenario-${prev.length + 1}`,
+          label: `${scenario.label} copy`
+        }
+      ];
+    });
+  };
+
+  const resetScenario = (scenario: ScenarioInput) => {
+    updateScenario({
+      ...DEFAULT_SCENARIO,
+      id: scenario.id,
+      label: scenario.label || DEFAULT_SCENARIO.label,
+      programKey: scenario.programKey
     });
   };
 
@@ -102,7 +183,7 @@ const App: React.FC = () => {
   };
 
   const handleShare = async () => {
-    const url = buildShareUrl(scenarios);
+    const url = buildShareUrl(mode, scenarios);
     try {
       await navigator.clipboard.writeText(url);
       setShareStatus('Link copied to clipboard.');
@@ -114,140 +195,229 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-tech-white">
-      <header className="bg-tech-navy px-6 py-8 text-tech-white">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-tech-gold">Georgia Tech Online</p>
-          <h1 className="text-3xl font-semibold text-tech-white sm:text-4xl">
-            Program Cost Calculator
-          </h1>
-          <p className="max-w-2xl text-sm text-tech-white/80">
-            Estimate tuition and online learning fees for OMSA, OMSCS, and OMSCSEC. Compare up to
-            three scenarios and share the results with teammates or advisors.
-          </p>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        <section className="rounded-2xl border border-tech-gold/40 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-tech-goldMedium">Scenario Compare</h2>
-              <p className="text-sm text-tech-navy/70">
-                Use the same calculator to test different program, term, or credit assumptions.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={addScenario}
-                disabled={scenarios.length >= MAX_SCENARIOS}
-                className="rounded-lg border border-tech-gold bg-tech-gold px-4 py-2 text-sm font-semibold text-tech-navy transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Add scenario
-              </button>
-              <button
-                type="button"
-                onClick={handleShare}
-                className="rounded-lg bg-tech-navy px-4 py-2 text-sm font-semibold text-tech-white transition hover:opacity-90"
-              >
-                Share
-              </button>
-            </div>
-          </div>
-          {shareStatus ? <p className="mt-3 text-xs text-tech-goldDark">{shareStatus}</p> : null}
-        </section>
-
-        <section className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {scenarios.map((scenario, index) => (
-            <ScenarioCard
-              key={scenario.id}
-              scenario={scenario}
-              index={index}
-              output={outputs[index]}
-              validation={validations[index]}
-              onChange={updateScenario}
-              onRemove={scenarios.length > 1 ? () => removeScenario(scenario.id) : undefined}
-            />
-          ))}
-        </section>
-
-        <section className="mt-6 grid gap-4 rounded-2xl border border-tech-gold/40 bg-tech-navy px-6 py-6 text-tech-white">
+    <div className="min-h-screen bg-tech-white text-tech-navy">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-4">
+        <header className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Combined snapshot</h2>
-            <p className="text-sm text-tech-white/70">
-              Sum of all scenario totals for quick planning conversations.
+            <p className="text-[11px] uppercase tracking-[0.35em] text-tech-goldDark">
+              Georgia Tech Online
+            </p>
+            <h1 className="text-2xl font-semibold text-tech-goldMedium">
+              Program Cost Calculator
+            </h1>
+            <p className="text-xs text-tech-navy/70">
+              Compare per-term costs or full degree plans with Spring 2026 rates.
             </p>
           </div>
-          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs uppercase tracking-[0.2em] text-tech-gold">Total</span>
-              <span className="text-2xl font-semibold">{formatCurrency(comparisonTotal)}</span>
-            </div>
-            <div className="text-xs text-tech-white/70">
-              Tuition and online learning fees based on the rates configured in the source of truth.
-            </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <button
+              type="button"
+              onClick={addScenario}
+              disabled={scenarios.length >= MAX_SCENARIOS}
+              className="rounded-lg border border-tech-gold bg-tech-gold px-3 py-2 font-semibold text-tech-navy transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add scenario
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="rounded-lg bg-tech-navy px-3 py-2 font-semibold text-tech-white transition hover:opacity-90"
+            >
+              Copy share link
+            </button>
           </div>
-        </section>
+        </header>
 
-        <section className="mt-6 rounded-2xl border border-tech-gold/40 bg-white p-6 text-sm text-tech-navy/80">
-          <h2 className="text-lg font-semibold text-tech-goldMedium">Explain the math</h2>
-          <ul className="mt-3 space-y-2">
-            <li>
-              <strong className="text-tech-goldDark">Tuition:</strong> Credits × program tuition rate
-              per credit.
-            </li>
-            <li>
-              <strong className="text-tech-goldDark">Online learning fee:</strong> Applied once per
-              term when credits are greater than zero, based on the official fee schedule.
-            </li>
-            <li>
-              <strong className="text-tech-goldDark">Total:</strong> Tuition + online learning fee.
-            </li>
-          </ul>
-        </section>
-      </main>
+        {shareStatus ? <p className="mt-2 text-xs text-tech-goldDark">{shareStatus}</p> : null}
 
-      <footer className="border-t border-tech-gold/40 bg-white px-6 py-6 text-xs text-tech-navy/60">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span>Georgia Tech Online Program Cost Calculator</span>
-          <span>Rates shown are sourced from official Georgia Tech tuition and fee pages.</span>
-        </div>
-        <div className="mx-auto mt-3 flex max-w-5xl flex-wrap gap-3 text-[11px] text-tech-navy/70">
-          <a
-            className="underline"
-            href="https://pe.gatech.edu/degrees/online-master-science-analytics/tuition"
-            target="_blank"
-            rel="noreferrer"
-          >
-            OMSA tuition source
-          </a>
-          <a
-            className="underline"
-            href="https://omscs.gatech.edu/program-info/tuition"
-            target="_blank"
-            rel="noreferrer"
-          >
-            OMSCS tuition source
-          </a>
-          <a
-            className="underline"
-            href="https://pe.gatech.edu/degrees/cybersecurity/online/tuition"
-            target="_blank"
-            rel="noreferrer"
-          >
-            OMSCSEC tuition source
-          </a>
-          <a
-            className="underline"
-            href="https://www.bursar.gatech.edu/tuition-fees"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Online learning fee source
-          </a>
-        </div>
-      </footer>
+        <main className="mt-3 grid flex-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)_300px]">
+          <section className="flex flex-col gap-3 rounded-2xl border border-tech-gold/40 bg-white p-4 shadow-sm">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
+                Mode
+              </p>
+              <div className="mt-2 flex rounded-lg border border-tech-gold/40 bg-tech-white">
+                <button
+                  type="button"
+                  onClick={() => setMode('per-term')}
+                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold ${
+                    mode === 'per-term' ? 'bg-tech-navy text-tech-white' : 'text-tech-navy'
+                  }`}
+                >
+                  Per Term
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('full-degree')}
+                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold ${
+                    mode === 'full-degree' ? 'bg-tech-navy text-tech-white' : 'text-tech-navy'
+                  }`}
+                >
+                  Full Degree
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-tech-navy px-3 py-3 text-xs text-tech-white">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-tech-gold">
+                Combined snapshot
+              </p>
+              <p className="mt-2 text-lg font-semibold">{formatCurrency(comparisonTotal)}</p>
+              <p className="mt-1 text-[11px] text-tech-white/70">
+                Sum of scenario totals for quick planning.
+              </p>
+            </div>
+
+            <div className="text-[11px] text-tech-navy/70">
+              <p className="font-semibold text-tech-goldDark">Scenario actions</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4">
+                <li>Duplicate or reset scenarios with the buttons on each card.</li>
+                <li>Shareable links include mode, program, credits, and terms.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {scenarios.map((scenario, index) => (
+              <ScenarioCard
+                key={scenario.id}
+                scenario={scenario}
+                index={index}
+                mode={mode}
+                perTermOutput={perTermOutputs[index]}
+                fullDegreeOutput={fullDegreeOutputs[index]}
+                validation={validations[index]}
+                onChange={updateScenario}
+                onDuplicate={
+                  scenarios.length < MAX_SCENARIOS ? () => duplicateScenario(scenario) : undefined
+                }
+                onReset={() => resetScenario(scenario)}
+                onRemove={scenarios.length > 1 ? () => removeScenario(scenario.id) : undefined}
+              />
+            ))}
+          </section>
+
+          <aside className="flex flex-col gap-3">
+            <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
+              <h2 className="text-sm font-semibold text-tech-goldMedium">Summary</h2>
+              <p className="mt-2 text-[11px] text-tech-navy/60">
+                {mode === 'per-term'
+                  ? 'Per-term totals include tuition plus the online learning fee.'
+                  : 'Full degree totals include tuition for required credits and fee estimates.'}
+              </p>
+              <div className="mt-3 space-y-2">
+                {scenarios.map((scenario, index) => (
+                  <div key={scenario.id} className="flex items-center justify-between">
+                    <span className="truncate">
+                      {scenario.label || `Scenario ${index + 1}`}
+                    </span>
+                    <span className="font-semibold">
+                      {formatCurrency(
+                        mode === 'per-term'
+                          ? perTermOutputs[index].total
+                          : fullDegreeOutputs[index].totalCost
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {mode === 'full-degree' ? (
+              <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/70 shadow-sm">
+                <h2 className="text-sm font-semibold text-tech-goldMedium">Full Degree Notes</h2>
+                <p className="mt-2">
+                  Fees are estimated assuming your credits per term stay constant each term.
+                </p>
+                <p className="mt-2">
+                  If you mix 3-credit and 6-credit terms, totals can differ.
+                </p>
+              </section>
+            ) : null}
+
+            <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
+              <h2 className="text-sm font-semibold text-tech-goldMedium">Data source</h2>
+              <div className="mt-3 space-y-2">
+                {PROGRAMS.map((program) => (
+                  <div key={program.key} className="flex items-center justify-between">
+                    <span>{program.label}</span>
+                    <span className="font-semibold">
+                      {formatCurrency(program.perCreditRate)}/credit
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t border-tech-gold/30 pt-2">
+                  <p>
+                    Fee rule: credits &lt; {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
+                    {formatCurrency(onlineLearningFeeRule.belowThresholdFee)}, credits ≥{' '}
+                    {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
+                    {formatCurrency(onlineLearningFeeRule.atOrAboveThresholdFee)}
+                  </p>
+                </div>
+                <div className="border-t border-tech-gold/30 pt-2">
+                  <p className="font-semibold">Degree credits</p>
+                  {PROGRAMS.map((program) => (
+                    <p key={program.key}>
+                      {program.label}: {degreeCreditsByProgram[program.key]} credits
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
+              <h2 className="text-sm font-semibold text-tech-goldMedium">Explain the math</h2>
+              {mode === 'per-term' ? (
+                <ul className="mt-2 space-y-2">
+                  <li>
+                    <strong className="text-tech-goldDark">Tuition:</strong> credits × rate
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Online learning fee:</strong>{' '}
+                    credits &lt; {onlineLearningFeeRule.thresholdCredits} ?{' '}
+                    {formatCurrency(onlineLearningFeeRule.belowThresholdFee)} :{' '}
+                    {formatCurrency(onlineLearningFeeRule.atOrAboveThresholdFee)}
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Total:</strong> tuition + fee
+                  </li>
+                </ul>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  <li>
+                    <strong className="text-tech-goldDark">Total tuition:</strong> required credits
+                    × rate
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Terms:</strong> auto = ceil(required
+                    credits ÷ credits per term) or manual entry
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Fee per term:</strong> credits per term
+                    &lt; {onlineLearningFeeRule.thresholdCredits} ?{' '}
+                    {formatCurrency(onlineLearningFeeRule.belowThresholdFee)} :{' '}
+                    {formatCurrency(onlineLearningFeeRule.atOrAboveThresholdFee)}
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Total fees:</strong> fee per term × terms
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Total cost:</strong> tuition + fees
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Average per semester:</strong> total
+                    cost ÷ terms
+                  </li>
+                  <li>
+                    <strong className="text-tech-goldDark">Time to graduate:</strong> terms ÷ terms
+                    per year, displayed as years and months
+                  </li>
+                </ul>
+              )}
+            </section>
+          </aside>
+        </main>
+      </div>
     </div>
   );
 };

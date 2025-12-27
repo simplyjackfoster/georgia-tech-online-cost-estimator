@@ -7,7 +7,7 @@ describe('App', () => {
   it('shows validation when credits are below minimum', async () => {
     render(<App />);
 
-    const creditInput = screen.getByLabelText(/credits for this term/i);
+    const creditInput = screen.getByLabelText(/credits this term/i);
     await userEvent.clear(creditInput);
     await userEvent.type(creditInput, '0');
 
