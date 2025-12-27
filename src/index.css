@@ -26,3 +26,10 @@ select {
   background-color: #b3a369;
   color: #003057;
 }
+
+@media (min-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 420px 460px 380px;
+    align-items: start;
+  }
+}
