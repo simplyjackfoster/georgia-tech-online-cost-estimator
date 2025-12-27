@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #003057;
+  background-color: #ffffff;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  color: #a4925a;
+}
+
+input,
+select {
+  color: #003057;
+}
+
+::selection {
+  background-color: #b3a369;
+  color: #003057;
+}
