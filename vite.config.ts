@@ -4,9 +4,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const isGithubPages = env.GITHUB_PAGES === 'true';
+  const isVercel = env.VERCEL === '1';
 
   return {
-    base: env.GITHUB_PAGES === 'true' ? '/georgia-tech-online-cost-estimator/' : '/',
+    base: isGithubPages && !isVercel ? '/georgia-tech-online-cost-estimator/' : '/',
     plugins: [react()],
     test: {
       environment: 'jsdom',
