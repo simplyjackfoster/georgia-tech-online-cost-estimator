@@ -2,6 +2,8 @@
 
 A single-page web app for estimating tuition and online learning fees for Georgia Tech online graduate programs. The calculator supports scenario comparisons, per-term vs full-degree planning, and shareable URLs.
 
+![OMS degree planning calculator screenshot](public/screenshot.svg)
+
 **Rates set from provided Spring 2026 PDF and explicit values in this prompt.**
 
 ## Why React + TypeScript + Vite
@@ -43,7 +45,30 @@ npm install
 npm run dev
 ```
 
+## Production Build
+```bash
+npm run build
+npm run preview
+```
+
 ## Tests
 ```bash
 npm run test
 ```
+
+## Deployment (Vercel)
+1. Create a new Vercel project connected to this GitHub repo.
+2. Framework preset: **Vite**.
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Add the custom domains `omscs.fyi` and `www.omscs.fyi` in the Vercel dashboard.
+
+### Custom Domain Setup (Porkbun → Vercel)
+Add the following DNS records in Porkbun:
+
+| Type | Host | Value |
+| --- | --- | --- |
+| A | @ | 76.76.21.21 |
+| CNAME | www | cname.vercel-dns.com |
+
+Once the records propagate, Vercel will issue HTTPS certificates automatically. The `www` host redirects to the apex domain via `vercel.json`.

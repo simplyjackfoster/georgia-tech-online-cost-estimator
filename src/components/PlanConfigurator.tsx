@@ -3,8 +3,7 @@ import { PROGRAMS, START_TERMS, degreeCreditsByProgram, type ProgramKey } from '
 import {
   buildTermLabel,
   resolveStartTerm,
-  type MixedLoadRow,
-  type MixedPlanResult
+  type MixedLoadRow
 } from '../lib/plan';
 
 type PaceRow = {
@@ -30,7 +29,6 @@ type PlanConfiguratorProps = {
   onSelectPace: (pace: number) => void;
   mixedRows: MixedLoadRow[];
   onMixedRowsChange: React.Dispatch<React.SetStateAction<MixedLoadRow[]>>;
-  mixedPlan: MixedPlanResult;
   programKey: ProgramKey;
   isMixedIncomplete: boolean;
 };
@@ -91,7 +89,6 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
   onSelectPace,
   mixedRows,
   onMixedRowsChange,
-  mixedPlan,
   programKey,
   isMixedIncomplete
 }) => {
@@ -136,17 +133,18 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
       role="region"
       aria-label="Start your OMS plan"
     >
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
+      <fieldset>
+        <legend className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
           Start your OMS plan: program + start semester
-        </p>
+        </legend>
         <div className="mt-3 grid gap-2">
           {PROGRAMS.map((program) => (
             <button
               key={program.key}
               type="button"
               onClick={() => onDraftProgramChange(program.key)}
-              className={`rounded-xl border px-4 py-4 text-left transition ${
+              aria-pressed={draftProgramKey === program.key}
+              className={`rounded-xl border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                 draftProgramKey === program.key
                   ? 'border-tech-gold bg-tech-gold/20'
                   : 'border-tech-gold/30 bg-tech-white hover:border-tech-gold/60'
@@ -157,13 +155,13 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div>
         <label className="mt-2 block text-xs font-semibold text-tech-navy">
           Start semester
           <select
-            className="mt-2 w-full rounded-lg border border-tech-gold/40 bg-white px-3 py-2 text-sm focus:border-tech-gold focus:outline-none focus:ring-2 focus:ring-tech-gold/30"
+            className="mt-2 w-full rounded-lg border border-tech-gold/40 bg-white px-3 py-2 text-sm focus:border-tech-gold focus:outline-none focus:ring-2 focus:ring-tech-gold/30 focus-visible:ring-tech-gold/60"
             value={draftStartTermKey}
             onChange={(event) => onDraftStartTermChange(event.target.value)}
           >
@@ -177,12 +175,12 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
         <button
           type="button"
           onClick={onApplyDraft}
-          className="mt-3 w-full rounded-lg bg-tech-navy px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-tech-white transition hover:opacity-90"
+          className="mt-3 w-full rounded-lg bg-tech-navy px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-tech-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           Update My Plan
         </button>
 
-        <div className="mt-4 rounded-2xl border border-tech-gold/30 bg-tech-white p-3">
+        <div className="mt-4 rounded-2xl border border-tech-gold/30 bg-tech-gold/5 p-3">
           <div className="flex flex-col gap-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
               Pacing
@@ -205,7 +203,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                 role="radio"
                 aria-checked={paceMode === 'constant'}
                 onClick={() => onPaceModeChange('constant')}
-                className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
+                className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 <div>
                   <p className="text-sm font-semibold text-tech-navy">Same every term (Constant)</p>
@@ -236,7 +234,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                           onClick={() => onSelectPace(row.creditsPerTerm)}
                           aria-pressed={selectedPace === row.creditsPerTerm}
                           aria-label={`Select ${row.creditsPerTerm} credits per term`}
-                          className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition ${
+                          className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                             selectedPace === row.creditsPerTerm
                               ? 'border-tech-navy bg-tech-navy text-tech-white'
                               : 'border-tech-gold/40 bg-white text-tech-goldDark hover:bg-tech-gold/10'
@@ -273,7 +271,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                 role="radio"
                 aria-checked={paceMode === 'mixed'}
                 onClick={() => onPaceModeChange('mixed')}
-                className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
+                className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 <div>
                   <p className="text-sm font-semibold text-tech-navy">Custom schedule (Mixed)</p>
@@ -299,7 +297,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                     <button
                       type="button"
                       onClick={handleAddTerm}
-                      className="rounded-full border border-tech-gold/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark transition hover:bg-tech-gold/10"
+                      className="rounded-full border border-tech-gold/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark transition hover:bg-tech-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                     >
                       Add term
                     </button>
@@ -324,7 +322,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                                 type="number"
                                 min={0}
                                 max={9}
-                                className="mt-1 w-20 rounded-lg border border-tech-gold/30 px-2 py-1 text-sm"
+                                className="mt-1 w-20 rounded-lg border border-tech-gold/30 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                                 value={credits}
                                 onChange={(event) =>
                                   handleCreditChange(index, Number(event.target.value))
@@ -336,7 +334,7 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
                               <button
                                 type="button"
                                 onClick={handleRemoveLastTerm}
-                                className="mt-5 rounded-full border border-tech-gold/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark transition hover:bg-tech-gold/10"
+                                className="mt-5 rounded-full border border-tech-gold/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark transition hover:bg-tech-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                               >
                                 Remove
                               </button>

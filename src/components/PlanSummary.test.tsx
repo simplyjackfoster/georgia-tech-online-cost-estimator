@@ -12,7 +12,7 @@ describe('PlanSummary', () => {
           totalTuition: 1000,
           totalCost: 1200,
           averagePerTerm: 300,
-          finishTerm: { label: 'Fall 2026' },
+          finishTerm: { label: 'Fall 2026', key: 'fall-2026', season: 'Fall', year: 2026 },
           feePayments: 4,
           plannedCredits: 30,
           creditsCovered: 30,

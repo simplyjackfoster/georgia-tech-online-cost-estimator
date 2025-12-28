@@ -37,6 +37,8 @@ export const usePlanState = () => {
   const [mixedRows, setMixedRows] = useState(DEFAULT_MIXED_ROWS);
   const [draftMixedRows, setDraftMixedRows] = useState(DEFAULT_MIXED_ROWS);
   const [shareStatus, setShareStatus] = useState<string>('');
+  const isPaceOption = (value: number): value is (typeof PACE_OPTIONS)[number] =>
+    PACE_OPTIONS.includes(value as (typeof PACE_OPTIONS)[number]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -59,7 +61,7 @@ export const usePlanState = () => {
     setStartTermKey(resolvedStartTermKey);
     setDraftProgramKey(resolvedProgramKey);
     setDraftStartTermKey(resolvedStartTermKey);
-    if (PACE_OPTIONS.includes(paceParam)) {
+    if (isPaceOption(paceParam)) {
       setSelectedPace(paceParam);
       setDraftSelectedPace(paceParam);
     }

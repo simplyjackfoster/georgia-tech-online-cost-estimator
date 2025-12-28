@@ -103,10 +103,7 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
                 <div key={term.termLabel} className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-tech-navy">{term.termLabel}</p>
-                    <p className="text-[11px] text-tech-navy/60">
-                      {term.credits} credits · {formatCurrency(term.tuition)} tuition +{' '}
-                      {formatCurrency(term.fee)} fees
-                    </p>
+                    <p className="text-[11px] text-tech-navy/60">{term.credits} credits</p>
                   </div>
                   <p className="text-right text-sm font-semibold text-tech-navy">
                     {formatCurrency(term.total)} total

@@ -24,7 +24,7 @@ exports[`App > matches the baseline layout snapshot 1`] = `
         <p
           class="text-xs text-tech-navy/70"
         >
-          Compare pacing options and map your OMS degree plan with the fastest, most cost-efficient path.
+          Compare pacing options and map your OMS degree plan with clarity and confidence.
         </p>
       </div>
       <div
@@ -593,7 +593,7 @@ exports[`App > matches the baseline layout snapshot 1`] = `
               >
                 Office of the Bursar Spring 2026 tuition totals
               </a>
-              . Tuition and fee math aligns with the Online MS program totals. No hidden markups.
+              . Tuition and fee math aligns with the Online MS program totals.
             </div>
           </div>
         </section>

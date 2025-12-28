@@ -26,18 +26,6 @@ describe('PlanConfigurator', () => {
         onSelectPace={vi.fn()}
         mixedRows={[{ id: 'row-1', terms: 2, creditsPerTerm: 3 }]}
         onMixedRowsChange={vi.fn()}
-        mixedPlan={{
-          numberOfTerms: 2,
-          totalFees: 0,
-          totalTuition: 0,
-          totalCost: 0,
-          averagePerTerm: 0,
-          finishTerm: { label: 'Fall 2026', key: 'fall-2026', season: 'Fall', year: 2026 },
-          feePayments: 2,
-          plannedCredits: 6,
-          creditsCovered: 6,
-          schedule: []
-        }}
         programKey="omscs"
         isMixedIncomplete={false}
       />
@@ -70,18 +58,6 @@ describe('PlanConfigurator', () => {
         onSelectPace={vi.fn()}
         mixedRows={[{ id: 'row-1', terms: 2, creditsPerTerm: 3 }]}
         onMixedRowsChange={handleMixedRowsChange}
-        mixedPlan={{
-          numberOfTerms: 2,
-          totalFees: 0,
-          totalTuition: 0,
-          totalCost: 0,
-          averagePerTerm: 0,
-          finishTerm: { label: 'Fall 2026', key: 'fall-2026', season: 'Fall', year: 2026 },
-          feePayments: 2,
-          plannedCredits: 6,
-          creditsCovered: 6,
-          schedule: []
-        }}
         programKey="omscs"
         isMixedIncomplete={false}
       />
@@ -91,7 +67,8 @@ describe('PlanConfigurator', () => {
     fireEvent.change(creditsInput, { target: { value: '6' } });
 
     expect(handleMixedRowsChange).toHaveBeenCalled();
-    const updater = handleMixedRowsChange.mock.calls.at(-1)?.[0];
+    const updater =
+      handleMixedRowsChange.mock.calls[handleMixedRowsChange.mock.calls.length - 1]?.[0];
     expect(typeof updater).toBe('function');
 
     const nextRows = updater([{ id: 'row-1', terms: 2, creditsPerTerm: 3 }]);

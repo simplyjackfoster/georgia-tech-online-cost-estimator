@@ -17,22 +17,25 @@ const Header: React.FC<HeaderProps> = ({ onShare, shareStatus }) => {
             OMS Degree Planning Calculator
           </h1>
           <p className="text-xs text-tech-navy/70">
-            Compare pacing options and map your OMS degree plan with the fastest, most
-            cost-efficient path.
+            Compare pacing options and map your OMS degree plan with clarity and confidence.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           <button
             type="button"
             onClick={onShare}
-            className="rounded-lg bg-tech-navy px-4 py-2 font-semibold text-tech-white transition hover:opacity-90"
+            className="rounded-lg bg-tech-navy px-4 py-2 font-semibold text-tech-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
-            Share My Degree Plan
+            Copy share link
           </button>
         </div>
       </header>
 
-      {shareStatus ? <p className="mt-2 text-xs text-tech-goldDark">{shareStatus}</p> : null}
+      {shareStatus ? (
+        <p className="mt-2 text-xs text-tech-goldDark" aria-live="polite">
+          {shareStatus}
+        </p>
+      ) : null}
     </>
   );
 };

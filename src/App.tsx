@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from './components/Header';
 import InfoSidebar from './components/InfoSidebar';
+import Footer from './components/Footer';
 import PlanConfigurator from './components/PlanConfigurator';
 import PlanSummary from './components/PlanSummary';
 import { usePlanState } from './hooks/usePlanState';
@@ -8,7 +9,6 @@ import { usePlanState } from './hooks/usePlanState';
 const App: React.FC = () => {
   const {
     activePlan,
-    draftMixedPlan,
     draftMixedRows,
     draftPaceMode,
     draftProgramKey,
@@ -20,7 +20,6 @@ const App: React.FC = () => {
     mixedPlan,
     paceMode,
     paceRows,
-    programKey,
     selectedProgram,
     shareStatus,
     setDraftMixedRows,
@@ -49,7 +48,6 @@ const App: React.FC = () => {
             onSelectPace={setDraftSelectedPace}
             mixedRows={draftMixedRows}
             onMixedRowsChange={setDraftMixedRows}
-            mixedPlan={draftMixedPlan}
             programKey={draftProgramKey}
             isMixedIncomplete={isDraftMixedIncomplete}
           />
@@ -63,6 +61,8 @@ const App: React.FC = () => {
 
           <InfoSidebar />
         </main>
+
+        <Footer />
       </div>
     </div>
   );

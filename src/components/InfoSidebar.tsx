@@ -8,7 +8,7 @@ const InfoSidebar: React.FC = () => {
       <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
         <h2 className="text-sm font-semibold text-tech-goldMedium">Official rates</h2>
         <p className="mt-2 text-[11px] text-tech-navy/60">
-          Office of the Bursar Spring 2026 tuition totals.
+          Sources: Office of the Bursar Spring 2026 tuition totals. Last updated: April 2024.
         </p>
         <div className="mt-3 space-y-2">
           {PROGRAMS.map((program) => (
@@ -43,13 +43,13 @@ const InfoSidebar: React.FC = () => {
             >
               Office of the Bursar Spring 2026 tuition totals
             </a>
-            . Tuition and fee math aligns with the Online MS program totals. No hidden markups.
+            . Tuition and fee math aligns with the Online MS program totals.
           </div>
         </div>
       </section>
 
       <details className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
-        <summary className="cursor-pointer text-sm font-semibold text-tech-goldMedium">
+        <summary className="cursor-pointer text-sm font-semibold text-tech-goldMedium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white">
           Explain the math
         </summary>
         <ul className="mt-3 space-y-2">
