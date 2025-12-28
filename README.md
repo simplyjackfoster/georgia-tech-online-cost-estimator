@@ -15,5 +15,12 @@ npm run dev
 - Run web-specific commands: `npm --workspace apps/web run <script>`
 - Run API-specific commands: `npm --workspace apps/api run <script>`
 
+## Analytics + Adoption Counter
+- The GitHub Pages frontend (`https://omscs.fyi`) calls the Vercel serverless API for Umami data.
+- The Vercel API (`apps/api`) holds the `UMAMI_API_KEY` secret and proxies the Umami Cloud endpoint with edge caching.
+
+### Vercel Environment Variables
+Set `UMAMI_API_KEY` in the Vercel project for `apps/api` to authorize requests to Umami Cloud.
+
 ## Documentation
 - Deployment details live in `docs/README.md`.

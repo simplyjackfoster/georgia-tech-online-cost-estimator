@@ -53,6 +53,8 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
         </div>
       </div>
 
+      <TrustCard />
+
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
@@ -115,7 +117,6 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
           </div>
         </div>
       ) : null}
-      <TrustCard />
     </section>
   );
 };
