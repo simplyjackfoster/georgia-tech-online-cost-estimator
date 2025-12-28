@@ -42,11 +42,9 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-          VITE_GITHUB_PAGES: ${{ vars.VITE_GITHUB_PAGES }}
-          VITE_GITHUB_PAGES_BASE: ${{ vars.VITE_GITHUB_PAGES_BASE }}
           VITE_SOURCE_URL: ${{ vars.VITE_SOURCE_URL }}
-          GITHUB_PAGES: "true"
-          GITHUB_PAGES_BASE: "/georgia-tech-online-cost-estimator/"
+          VITE_BASE: "/"
+          VITE_GITHUB_PAGES: "false"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
