@@ -83,7 +83,7 @@ const fetchEventsPage = async (
 export default async function handler(
   request: { method?: string; headers: Record<string, string | string[] | undefined> },
   response: {
-    status: (code: number) => { json: (payload: unknown) => void };
+    status: (code: number) => { json: (payload: unknown) => void; end: () => void };
     setHeader: (key: string, value: string) => void;
     end: () => void;
   }
