@@ -12,6 +12,7 @@
     "preview": "npm --workspace apps/web run preview",
     "test": "npm --workspace apps/web run test",
     "test:run": "npm --workspace apps/web run test:run",
-    "test:e2e": "npm --workspace apps/web run test:e2e"
+    "test:e2e": "npm --workspace apps/web run test:e2e",
+    "umami:verify": "node scripts/umami-verify.mjs"
   }
 }

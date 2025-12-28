@@ -19,5 +19,8 @@
 ## apps/api (Vercel)
 1. Create a new Vercel project linked to this repo.
 2. Set the project root directory to `apps/api`.
-3. Add the environment variable `UMAMI_API_KEY` in the Vercel dashboard.
+3. Add the environment variables `UMAMI_API_KEY` and `UMAMI_WEBSITE_ID` in the Vercel dashboard.
 4. Deploy; the API endpoint will be available at `/api/adoption`.
+
+## Umami Cloud verification
+- See `docs/UMAMI_CLOUD.md` for the API base URL, auth header, and verification steps.

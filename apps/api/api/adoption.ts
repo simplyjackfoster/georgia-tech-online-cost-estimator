@@ -1,6 +1,16 @@
-const WEBSITE_ID = 'ef415650-dc26-4445-a007-651d425fc764';
-const UMAMI_BASE_URL = 'https://cloud.umami.is/api';
+const DEFAULT_WEBSITE_ID = 'ef415650-dc26-4445-a007-651d425fc764';
+const UMAMI_BASE_URL = 'https://api.umami.is/v1';
 const CORS_ORIGIN = 'https://omscs.fyi';
+const EVENT_NAME = 'plan_generated';
+const PAGE_SIZE = 200;
+const MAX_PAGES = 100;
+
+type UmamiEvent = {
+  createdAt?: number;
+  eventName?: string;
+  eventType?: number;
+  sessionId?: string;
+};
 
 const setCorsHeaders = (response: { setHeader: (key: string, value: string) => void }) => {
   response.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
@@ -26,6 +36,48 @@ const extractCount = (payload: unknown): number => {
     return (payload as { count: number }).count;
   }
   return 0;
+};
+
+const getWebsiteId = (): string => process.env.UMAMI_WEBSITE_ID ?? DEFAULT_WEBSITE_ID;
+
+const extractEvents = (payload: unknown): UmamiEvent[] => {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+  const data = (payload as { data?: unknown }).data;
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  return data.filter((item): item is UmamiEvent => typeof item === 'object' && item !== null);
+};
+
+const fetchEventsPage = async (
+  apiKey: string,
+  websiteId: string,
+  page: number,
+  startAt: number,
+  endAt: number
+): Promise<UmamiEvent[]> => {
+  const params = new URLSearchParams({
+    startAt: String(startAt),
+    endAt: String(endAt),
+    page: String(page),
+    pageSize: String(PAGE_SIZE)
+  });
+  const url = `${UMAMI_BASE_URL}/websites/${websiteId}/events?${params.toString()}`;
+  const umamiResponse = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'x-umami-api-key': apiKey
+    }
+  });
+
+  if (!umamiResponse.ok) {
+    throw new Error('Failed to fetch adoption count');
+  }
+
+  const data = (await umamiResponse.json()) as unknown;
+  return extractEvents(data);
 };
 
 export default async function handler(
@@ -57,20 +109,25 @@ export default async function handler(
   }
 
   try {
-    const url = `${UMAMI_BASE_URL}/websites/${WEBSITE_ID}/events?eventName=plan_generated`;
-    const umamiResponse = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`
+    const websiteId = getWebsiteId();
+    const endAt = Date.now();
+    const startAt = 0;
+    let page = 1;
+    let total = 0;
+    while (page <= MAX_PAGES) {
+      const events = await fetchEventsPage(apiKey, websiteId, page, startAt, endAt);
+      if (events.length === 0) {
+        break;
       }
-    });
-
-    if (!umamiResponse.ok) {
-      response.status(umamiResponse.status).json({ error: 'Failed to fetch adoption count' });
-      return;
+      total += events.filter(
+        (event) => event.eventType === 2 && event.eventName === EVENT_NAME
+      ).length;
+      if (events.length < PAGE_SIZE) {
+        break;
+      }
+      page += 1;
     }
-
-    const data = (await umamiResponse.json()) as unknown;
-    const count = extractCount(data);
+    const count = Number.isFinite(total) ? total : extractCount({ count: total });
     response.status(200).json({ count });
   } catch (error) {
     response.status(500).json({ error: 'Unexpected error fetching adoption count' });
