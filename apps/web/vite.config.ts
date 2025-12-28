@@ -6,10 +6,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const isGithubPages = env.GITHUB_PAGES === 'true';
   const isVercel = env.VERCEL === '1';
+  const fallbackBase =
+    mode === 'production' && !isVercel ? '/georgia-tech-online-cost-estimator/' : '/';
   const base =
     env.VITE_BASE ||
+    env.PUBLIC_URL ||
     env.GITHUB_PAGES_BASE ||
-    (isGithubPages && !isVercel ? '/georgia-tech-online-cost-estimator/' : '/');
+    (isGithubPages && !isVercel ? '/georgia-tech-online-cost-estimator/' : fallbackBase);
 
   return {
     base,
