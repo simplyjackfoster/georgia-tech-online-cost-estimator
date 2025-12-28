@@ -20,4 +20,23 @@ test.describe('Degree planning calculator', () => {
     await expect(page.getByText('Calendar timeline')).toBeVisible();
     await expect(page.getByText(/credits ·/i).first()).toBeVisible();
   });
+
+  test('keeps a single mobile share button in the sticky bar', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+
+    const visibleShareButtons = page.locator('button:visible', { hasText: 'Copy share link' });
+    await expect(visibleShareButtons).toHaveCount(1);
+
+    const totalCost = page.getByText('Total cost').locator('..').locator('p').nth(1);
+    const totalBox = await totalCost.boundingBox();
+    const copyBox = await visibleShareButtons.first().boundingBox();
+
+    expect(totalBox).not.toBeNull();
+    expect(copyBox).not.toBeNull();
+
+    if (totalBox && copyBox) {
+      expect(totalBox.x + totalBox.width).toBeLessThanOrEqual(copyBox.x - 4);
+    }
+  });
 });

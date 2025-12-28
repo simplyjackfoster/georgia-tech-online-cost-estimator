@@ -16,8 +16,8 @@ const StickyPlanBar: React.FC<StickyPlanBarProps> = ({
 }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-tech-gold/30 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
-      <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3">
-        <div className="min-w-0">
+      <div className="mx-auto flex w-full max-w-[1320px] items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
             Total cost
           </p>
@@ -26,18 +26,18 @@ const StickyPlanBar: React.FC<StickyPlanBarProps> = ({
           </p>
           <p className="text-[11px] text-tech-navy/70">Finish {finishLabel}</p>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-2 max-[360px]:flex-col-reverse max-[360px]:items-stretch">
           <button
             type="button"
             onClick={onCopyShare}
-            className="rounded-full border border-tech-navy px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-navy transition hover:bg-tech-navy hover:text-tech-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="shrink-0 rounded-full border border-tech-navy px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-tech-navy transition hover:bg-tech-navy hover:text-tech-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white min-[360px]:px-3 min-[360px]:py-2 min-[360px]:text-[10px]"
           >
             Copy share link
           </button>
           <button
             type="button"
             onClick={onViewDetails}
-            className="rounded-full bg-tech-navy px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-tech-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="shrink-0 rounded-full bg-tech-navy px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-tech-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white min-[360px]:px-3 min-[360px]:py-2 min-[360px]:text-[10px]"
           >
             View details
           </button>

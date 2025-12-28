@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ onShare, shareStatus }) => {
             Compare pacing options and map your OMS degree plan
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="hidden flex-wrap gap-2 text-xs lg:flex">
           <button
             type="button"
             onClick={onShare}
