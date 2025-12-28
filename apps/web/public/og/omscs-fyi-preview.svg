@@ -1,0 +1,10 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F7F4F0"/>
+  <rect x="60" y="60" width="260" height="6" rx="3" fill="#B3A369"/>
+  <rect x="880" y="544" width="260" height="6" rx="3" fill="#003057"/>
+  <text x="600" y="240" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="72" font-weight="700" fill="#003057">OMSCS FYI</text>
+  <rect x="460" y="268" width="280" height="2" fill="#D8D2CD"/>
+  <text x="600" y="350" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="58" font-weight="500" fill="#B3A369">What Your Degree Actually Costs</text>
+  <text x="600" y="414" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="400" fill="#34404C">A clean, transparent cost breakdown for Georgia Tech OMSCS students.</text>
+  <text x="60" y="570" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="22" font-weight="400" fill="#34404C">Built by OMSCS students · Privacy-first</text>
+</svg>
