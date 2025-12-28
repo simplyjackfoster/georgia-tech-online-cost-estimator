@@ -7,11 +7,11 @@ type TrustCardProps = {
 const TrustCard: React.FC<TrustCardProps> = ({ className = '' }) => {
   const [adoptionCount, setAdoptionCount] = useState<number | null>(null);
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? '';
-  const adoptionUrl = `${apiBaseUrl}/api/adoption`;
+  const adoptionUrl = apiBaseUrl ? `${apiBaseUrl}/api/adoption` : null;
   const sourceUrl = import.meta.env.VITE_SOURCE_URL ?? 'https://github.com';
 
   useEffect(() => {
-    if (typeof fetch !== 'function') {
+    if (!adoptionUrl || typeof fetch !== 'function') {
       return;
     }
 
