@@ -36,6 +36,6 @@ describe('App', () => {
     await userEvent.click(planButton);
 
     expect(screen.getByText(/calendar timeline/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/credits ·/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\d+ credits/i).length).toBeGreaterThan(0);
   });
 });
