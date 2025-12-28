@@ -1,4 +1,5 @@
 import React from 'react';
+import TrustCard from './TrustCard';
 import { PROGRAMS, degreeCreditsByProgram, onlineLearningFeeRule } from '../data/rates';
 import { formatCurrency } from '../lib/calc';
 
@@ -8,7 +9,7 @@ const InfoSidebar: React.FC = () => {
       <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
         <h2 className="text-sm font-semibold text-tech-goldMedium">Official rates</h2>
         <p className="mt-2 text-[11px] text-tech-navy/60">
-          Sources: Office of the Bursar Spring 2026 tuition totals. Last updated: April 2024.
+          Sources: Office of the Bursar Spring 2026 tuition totals. Last updated: December 2026.
         </p>
         <div className="mt-3 space-y-2">
           {PROGRAMS.map((program) => (
@@ -76,6 +77,8 @@ const InfoSidebar: React.FC = () => {
           </li>
         </ul>
       </details>
+
+      <TrustCard />
     </aside>
   );
 };

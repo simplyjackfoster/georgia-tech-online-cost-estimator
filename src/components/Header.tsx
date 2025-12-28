@@ -20,7 +20,7 @@ const Header: React.FC<HeaderProps> = ({ onShare, shareStatus }) => {
             OMS Degree Planning Calculator
           </h1>
           <p className="text-xs text-tech-navy/70">
-            Compare pacing options and map your OMS degree plan with clarity and confidence.
+            Compare pacing options and map your OMS degree plan
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
