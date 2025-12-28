@@ -1,5 +1,4 @@
 import React from 'react';
-import TrustCard from './TrustCard';
 import { PROGRAMS, degreeCreditsByProgram, onlineLearningFeeRule } from '../data/rates';
 import { formatCurrency } from '../lib/calc';
 
@@ -78,7 +77,6 @@ const InfoSidebar: React.FC = () => {
         </ul>
       </details>
 
-      <TrustCard />
     </aside>
   );
 };

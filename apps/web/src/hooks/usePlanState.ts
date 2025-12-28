@@ -38,6 +38,7 @@ export const usePlanState = () => {
   const [draftMixedRows, setDraftMixedRows] = useState(DEFAULT_MIXED_ROWS);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const shareResetTimer = useRef<number | null>(null);
+  const shouldTrackPlanGenerated = useRef(false);
   const isPaceOption = (value: number): value is (typeof PACE_OPTIONS)[number] =>
     PACE_OPTIONS.includes(value as (typeof PACE_OPTIONS)[number]);
 
@@ -168,6 +169,7 @@ export const usePlanState = () => {
     draftMixedPlan.creditsCovered < degreeCreditsByProgram[draftProgramKey];
 
   const handleApplyDraft = useCallback(() => {
+    shouldTrackPlanGenerated.current = true;
     setProgramKey(draftProgramKey);
     setStartTermKey(draftStartTermKey);
     setSelectedPace(draftSelectedPace);
@@ -180,6 +182,21 @@ export const usePlanState = () => {
     draftSelectedPace,
     draftStartTermKey
   ]);
+
+  useEffect(() => {
+    if (!shouldTrackPlanGenerated.current) {
+      return;
+    }
+
+    const isPlanValid = paceMode !== 'mixed' || !isMixedIncomplete;
+    if (!isPlanValid) {
+      shouldTrackPlanGenerated.current = false;
+      return;
+    }
+
+    shouldTrackPlanGenerated.current = false;
+    window.umami?.track('plan_generated');
+  }, [activePlan, isMixedIncomplete, paceMode]);
 
   const scheduleShareReset = useCallback(() => {
     if (shareResetTimer.current) {

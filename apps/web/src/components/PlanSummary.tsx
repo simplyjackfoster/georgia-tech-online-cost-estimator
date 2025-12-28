@@ -2,6 +2,7 @@ import React from 'react';
 import { formatCurrency } from '../lib/calc';
 import { type MixedPlanResult } from '../lib/plan';
 import { type ProgramKey } from '../data/rates';
+import TrustCard from './TrustCard';
 
 type ActivePlan = MixedPlanResult & {
   finishTerm: { label: string };
@@ -114,6 +115,7 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
           </div>
         </div>
       ) : null}
+      <TrustCard />
     </section>
   );
 };
