@@ -54,20 +54,6 @@ type MixedPlanResult = {
   }>;
 };
 
-type AppliedPlan = {
-  programKey: ProgramKey;
-  startTermKey: string;
-  selectedPace: number;
-  paceMode: 'constant' | 'mixed';
-  mixedRows: MixedLoadRow[];
-};
-
-const DEFAULT_MIXED_ROWS: MixedLoadRow[] = [
-  { id: 'row-1', terms: 4, creditsPerTerm: 3 },
-  { id: 'row-2', terms: 4, creditsPerTerm: 6 },
-  { id: 'row-3', terms: 2, creditsPerTerm: 3 }
-];
-
 const buildShareUrl = (
   programKey: ProgramKey,
   startTermKey: string,
@@ -166,14 +152,11 @@ const App: React.FC = () => {
   const [startTermKey, setStartTermKey] = useState<string>(START_TERMS[0]?.key ?? 'spring-2026');
   const [selectedPace, setSelectedPace] = useState<number>(6);
   const [paceMode, setPaceMode] = useState<'constant' | 'mixed'>('constant');
-  const [mixedRows, setMixedRows] = useState<MixedLoadRow[]>(DEFAULT_MIXED_ROWS);
-  const [appliedPlan, setAppliedPlan] = useState<AppliedPlan>({
-    programKey: 'omscs',
-    startTermKey: START_TERMS[0]?.key ?? 'spring-2026',
-    selectedPace: 6,
-    paceMode: 'constant',
-    mixedRows: DEFAULT_MIXED_ROWS
-  });
+  const [mixedRows, setMixedRows] = useState<MixedLoadRow[]>([
+    { id: 'row-1', terms: 4, creditsPerTerm: 3 },
+    { id: 'row-2', terms: 4, creditsPerTerm: 6 },
+    { id: 'row-3', terms: 2, creditsPerTerm: 3 }
+  ]);
   const [shareStatus, setShareStatus] = useState<string>('');
 
   useEffect(() => {
@@ -184,23 +167,17 @@ const App: React.FC = () => {
     const modeParam = params.get('mode');
     const mixedParam = params.get('mixed');
 
-    let nextProgramKey: ProgramKey = 'omscs';
-    let nextStartTermKey = START_TERMS[0]?.key ?? 'spring-2026';
-    let nextSelectedPace = 6;
-    let nextPaceMode: 'constant' | 'mixed' = 'constant';
-    let nextMixedRows = DEFAULT_MIXED_ROWS;
-
     if (programParam && programParam in perCreditRateByProgram) {
-      nextProgramKey = programParam as ProgramKey;
+      setProgramKey(programParam as ProgramKey);
     }
     if (startParam && START_TERMS.some((term) => term.key === startParam)) {
-      nextStartTermKey = startParam;
+      setStartTermKey(startParam);
     }
     if (PACE_OPTIONS.includes(paceParam)) {
-      nextSelectedPace = paceParam;
+      setSelectedPace(paceParam);
     }
     if (modeParam === 'mixed' || modeParam === 'constant') {
-      nextPaceMode = modeParam;
+      setPaceMode(modeParam);
     }
     if (mixedParam) {
       const parsedRows = mixedParam
@@ -220,33 +197,14 @@ const App: React.FC = () => {
         })
         .filter((row): row is MixedLoadRow => Boolean(row));
       if (parsedRows.length > 0) {
-        nextMixedRows = parsedRows;
+        setMixedRows(parsedRows);
       }
     }
-
-    setProgramKey(nextProgramKey);
-    setStartTermKey(nextStartTermKey);
-    setSelectedPace(nextSelectedPace);
-    setPaceMode(nextPaceMode);
-    setMixedRows(nextMixedRows);
-    setAppliedPlan({
-      programKey: nextProgramKey,
-      startTermKey: nextStartTermKey,
-      selectedPace: nextSelectedPace,
-      paceMode: nextPaceMode,
-      mixedRows: nextMixedRows
-    });
   }, []);
 
   const startTerm = useMemo(() => {
     return START_TERMS.find((term) => term.key === startTermKey) ?? START_TERMS[0];
   }, [startTermKey]);
-
-  const appliedStartTerm = useMemo(() => {
-    return (
-      START_TERMS.find((term) => term.key === appliedPlan.startTermKey) ?? START_TERMS[0]
-    );
-  }, [appliedPlan.startTermKey]);
 
   const paceRows = useMemo(() => {
     return PACE_OPTIONS.map((creditsPerTerm) => {
@@ -268,93 +226,31 @@ const App: React.FC = () => {
   }, [programKey, startTerm]);
 
   const selectedRow = paceRows.find((row) => row.creditsPerTerm === selectedPace) ?? paceRows[0];
-  const selectedProgram = PROGRAMS.find((program) => program.key === appliedPlan.programKey);
-  const mixedPlanDraft = useMemo(
+  const selectedProgram = PROGRAMS.find((program) => program.key === programKey);
+  const mixedPlan = useMemo(
     () =>
       calculateMixedPlan(programKey, degreeCreditsByProgram[programKey], startTerm, mixedRows),
     [programKey, startTerm, mixedRows]
   );
-  const appliedConstantPlan = useMemo(() => {
-    const fullDegree = calculateFullDegree(
-      appliedPlan.programKey,
-      degreeCreditsByProgram[appliedPlan.programKey],
-      appliedPlan.selectedPace,
-      0,
-      true,
-      3
-    );
-    const finishTerm = getFinishTerm(appliedStartTerm, fullDegree.numberOfTerms);
-    return {
-      fullDegree,
-      finishTerm
-    };
-  }, [
-    appliedPlan.programKey,
-    appliedPlan.selectedPace,
-    appliedStartTerm,
-    degreeCreditsByProgram
-  ]);
-  const mixedPlan = useMemo(
-    () =>
-      calculateMixedPlan(
-        appliedPlan.programKey,
-        degreeCreditsByProgram[appliedPlan.programKey],
-        appliedStartTerm,
-        appliedPlan.mixedRows
-      ),
-    [appliedPlan.programKey, appliedPlan.mixedRows, appliedStartTerm]
-  );
   const activePlan =
-    appliedPlan.paceMode === 'mixed'
+    paceMode === 'mixed'
       ? mixedPlan
       : {
-          numberOfTerms: appliedConstantPlan.fullDegree.numberOfTerms,
-          totalFees: appliedConstantPlan.fullDegree.totalFees,
-          totalTuition: appliedConstantPlan.fullDegree.totalTuition,
-          totalCost: appliedConstantPlan.fullDegree.totalCost,
-          averagePerTerm: appliedConstantPlan.fullDegree.averagePerTerm,
-          finishTerm: appliedConstantPlan.finishTerm,
-          feePayments: appliedConstantPlan.fullDegree.numberOfTerms,
-          plannedCredits: degreeCreditsByProgram[appliedPlan.programKey],
-          creditsCovered: degreeCreditsByProgram[appliedPlan.programKey],
+          numberOfTerms: selectedRow.fullDegree.numberOfTerms,
+          totalFees: selectedRow.fullDegree.totalFees,
+          totalTuition: selectedRow.fullDegree.totalTuition,
+          totalCost: selectedRow.fullDegree.totalCost,
+          averagePerTerm: selectedRow.fullDegree.averagePerTerm,
+          finishTerm: selectedRow.finishTerm,
+          feePayments: selectedRow.fullDegree.numberOfTerms,
+          plannedCredits: degreeCreditsByProgram[programKey],
+          creditsCovered: degreeCreditsByProgram[programKey],
           schedule: []
         };
-  const isMixedIncomplete =
-    mixedPlanDraft.creditsCovered < degreeCreditsByProgram[programKey];
-  const isPlanDirty = useMemo(() => {
-    const mixedRowsChanged =
-      mixedRows.length !== appliedPlan.mixedRows.length ||
-      mixedRows.some((row, index) => {
-        const appliedRow = appliedPlan.mixedRows[index];
-        if (!appliedRow) {
-          return true;
-        }
-        return row.terms !== appliedRow.terms || row.creditsPerTerm !== appliedRow.creditsPerTerm;
-      });
-    return (
-      programKey !== appliedPlan.programKey ||
-      startTermKey !== appliedPlan.startTermKey ||
-      selectedPace !== appliedPlan.selectedPace ||
-      paceMode !== appliedPlan.paceMode ||
-      mixedRowsChanged
-    );
-  }, [
-    appliedPlan,
-    mixedRows,
-    paceMode,
-    programKey,
-    selectedPace,
-    startTermKey
-  ]);
+  const isMixedIncomplete = mixedPlan.creditsCovered < degreeCreditsByProgram[programKey];
 
   const handleShare = async () => {
-    const url = buildShareUrl(
-      appliedPlan.programKey,
-      appliedPlan.startTermKey,
-      appliedPlan.selectedPace,
-      appliedPlan.paceMode,
-      appliedPlan.mixedRows
-    );
+    const url = buildShareUrl(programKey, startTermKey, selectedPace, paceMode, mixedRows);
     try {
       await navigator.clipboard.writeText(url);
       setShareStatus('Link copied to clipboard.');
@@ -363,17 +259,6 @@ const App: React.FC = () => {
       setShareStatus('Copy failed. Link opened in a new tab.');
       window.open(url, '_blank', 'noopener,noreferrer');
     }
-  };
-
-  const handleApplyPlan = () => {
-    setAppliedPlan({
-      programKey,
-      startTermKey,
-      selectedPace,
-      paceMode,
-      mixedRows
-    });
-    setShareStatus('');
   };
 
   return (
@@ -404,7 +289,7 @@ const App: React.FC = () => {
 
         {shareStatus ? <p className="mt-2 text-xs text-tech-goldDark">{shareStatus}</p> : null}
 
-        <main className="dashboard-grid mt-3 grid flex-1 gap-4 lg:grid-cols-[minmax(360px,1fr)_minmax(520px,2fr)]">
+        <main className="dashboard-grid mt-3 grid flex-1 gap-4 lg:grid-cols-[minmax(360px,1fr)_minmax(360px,1fr)_minmax(360px,1fr)]">
           <section className="flex flex-col gap-3 rounded-2xl border border-tech-gold/40 bg-white p-4 shadow-sm">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
@@ -416,16 +301,16 @@ const App: React.FC = () => {
                     key={program.key}
                     type="button"
                     onClick={() => setProgramKey(program.key)}
-                    className={`rounded-xl border px-4 py-3 text-left transition ${
+                    className={`rounded-xl border px-4 py-4 text-left transition ${
                       programKey === program.key
                         ? 'border-tech-gold bg-tech-gold/20'
                         : 'border-tech-gold/30 bg-tech-white hover:border-tech-gold/60'
                     }`}
                   >
-                    <p className="text-base font-semibold text-tech-navy">
+                    <p className="text-lg font-semibold text-tech-navy">
                       {program.key.toUpperCase()}
                     </p>
-                    <p className="text-[11px] text-tech-navy/70">{program.label}</p>
+                    <p className="text-xs text-tech-navy/70">{program.label}</p>
                   </button>
                 ))}
               </div>
@@ -433,7 +318,7 @@ const App: React.FC = () => {
 
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
-                Pacing
+                Step 2 — Compare Paces
               </p>
               <label className="mt-2 block text-xs font-semibold text-tech-navy">
                 Start semester
@@ -472,44 +357,52 @@ const App: React.FC = () => {
                         : 'text-tech-goldDark hover:bg-tech-gold/10'
                     }`}
                   >
-                    Custom Mixed Load
+                    Mixed Load
                   </button>
                 </div>
 
                 {paceMode === 'constant' ? (
-                  <div className="rounded-xl border border-tech-gold/30 bg-tech-white p-3 text-xs">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
-                      Courses per term
-                      <select
-                        className="mt-2 w-full rounded-lg border border-tech-gold/30 bg-white px-3 py-2 text-sm focus:border-tech-gold focus:outline-none focus:ring-2 focus:ring-tech-gold/30"
-                        value={selectedPace}
-                        onChange={(event) => setSelectedPace(Number(event.target.value))}
-                      >
-                        {PACE_OPTIONS.map((paceOption) => (
-                          <option key={paceOption} value={paceOption}>
-                            {paceOption} credits
-                          </option>
+                  <div className="overflow-hidden rounded-xl border border-tech-gold/30">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-tech-gold/10 text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
+                        <tr>
+                          <th className="px-3 py-2">Credits / Term</th>
+                          <th className="px-3 py-2">Finish Semester</th>
+                          <th className="px-3 py-2">Total Cost</th>
+                          <th className="px-3 py-2">Avg / Term</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paceRows.map((row) => (
+                          <tr
+                            key={row.creditsPerTerm}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedPace(row.creditsPerTerm)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setSelectedPace(row.creditsPerTerm);
+                              }
+                            }}
+                            className={`cursor-pointer border-t border-tech-gold/20 transition ${
+                              selectedPace === row.creditsPerTerm
+                                ? 'bg-tech-navy text-tech-white'
+                                : 'hover:bg-tech-gold/10'
+                            }`}
+                            aria-pressed={selectedPace === row.creditsPerTerm}
+                            aria-label={`Select ${row.creditsPerTerm} credits per term`}
+                          >
+                            <td className="px-3 py-2 font-semibold">{row.creditsPerTerm}</td>
+                            <td className="px-3 py-2">{row.finishTerm.label}</td>
+                            <td className="px-3 py-2">{formatCurrency(row.fullDegree.totalCost)}</td>
+                            <td className="px-3 py-2">
+                              {formatCurrency(row.fullDegree.averagePerTerm)}
+                            </td>
+                          </tr>
                         ))}
-                      </select>
-                    </label>
-                    <div className="mt-3 space-y-2 rounded-lg border border-tech-gold/20 bg-tech-gold/10 px-3 py-2 text-[11px] text-tech-navy/80">
-                      <div className="flex items-center justify-between">
-                        <span>Estimated finish</span>
-                        <span className="font-semibold">{selectedRow.finishTerm.label}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Projected total</span>
-                        <span className="font-semibold">
-                          {formatCurrency(selectedRow.fullDegree.totalCost)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Avg per term</span>
-                        <span className="font-semibold">
-                          {formatCurrency(selectedRow.fullDegree.averagePerTerm)}
-                        </span>
-                      </div>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-tech-gold/30 bg-tech-white p-3 text-xs">
@@ -596,9 +489,9 @@ const App: React.FC = () => {
                       ))}
                     </div>
                     <div className="mt-3 rounded-lg border border-tech-gold/30 bg-tech-gold/10 px-3 py-2 text-[11px] text-tech-navy/70">
-                      Planned credits: {mixedPlanDraft.plannedCredits} · Required:{' '}
+                      Planned credits: {mixedPlan.plannedCredits} · Required:{' '}
                       {degreeCreditsByProgram[programKey]} · Covered:{' '}
-                      {mixedPlanDraft.creditsCovered}
+                      {mixedPlan.creditsCovered}
                     </div>
                     {isMixedIncomplete ? (
                       <p className="mt-2 text-[11px] text-tech-goldDark">
@@ -609,149 +502,97 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleApplyPlan}
-              disabled={!isPlanDirty}
-              className="mt-2 w-full rounded-xl bg-tech-goldMedium px-4 py-2 text-sm font-semibold text-tech-navy transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Update Dashboard
-            </button>
           </section>
 
-          <section className="flex flex-col gap-3">
-            <section className="flex flex-col gap-3 rounded-2xl border border-tech-gold/40 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-tech-goldMedium">Financial Summary</h2>
-              <div className="rounded-2xl bg-tech-navy px-4 py-4 text-tech-white">
-                <h3 className="text-sm font-semibold text-tech-gold">
-                  Your {selectedProgram?.key.toUpperCase()} Plan
-                </h3>
-                <div className="mt-3">
-                  <p className="text-3xl font-semibold">
-                    {formatCurrency(activePlan.totalCost)}
-                  </p>
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-tech-gold">
-                    Total Degree Cost
-                  </p>
-                  <p className="mt-1 text-xs text-tech-gold">
-                    Finish {activePlan.finishTerm.label}
-                  </p>
-                </div>
-                <div className="mt-4 grid gap-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span>Avg per term</span>
-                    <span className="font-semibold">
-                      {formatCurrency(activePlan.averagePerTerm)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Terms needed</span>
-                    <span className="font-semibold">{activePlan.numberOfTerms}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Tuition total</span>
-                    <span className="font-semibold">
-                      {formatCurrency(activePlan.totalTuition)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Fee total</span>
-                    <span className="font-semibold">{formatCurrency(activePlan.totalFees)}</span>
-                  </div>
-                </div>
+          <section className="flex flex-col gap-3 rounded-2xl border border-tech-gold/40 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl bg-tech-navy px-4 py-4 text-tech-white">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-tech-gold">
+                Step 3 — Your Degree Plan Dashboard
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">
+                Your {selectedProgram?.key.toUpperCase()} Plan
+              </h2>
+              <div className="mt-3">
+                <p className="text-3xl font-semibold">
+                  {formatCurrency(activePlan.totalCost)}
+                </p>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-tech-gold">
+                  Total Degree Cost
+                </p>
+                <p className="mt-1 text-xs text-tech-gold">
+                  Finish {activePlan.finishTerm.label}
+                </p>
               </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
-                    Tuition total
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-tech-navy">
-                    {formatCurrency(activePlan.totalTuition)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
-                    Fee total
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-tech-navy">
-                    {formatCurrency(activePlan.totalFees)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
-                    Avg per term
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-tech-navy">
+              <div className="mt-4 grid gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span>Avg per term</span>
+                  <span className="font-semibold">
                     {formatCurrency(activePlan.averagePerTerm)}
-                  </p>
+                  </span>
                 </div>
-                <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
-                    Time to graduate
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-tech-navy">
-                    {activePlan.numberOfTerms} semesters
-                  </p>
+                <div className="flex items-center justify-between">
+                  <span>Terms needed</span>
+                  <span className="font-semibold">{activePlan.numberOfTerms}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Tuition total</span>
+                  <span className="font-semibold">
+                    {formatCurrency(activePlan.totalTuition)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Fee total</span>
+                  <span className="font-semibold">{formatCurrency(activePlan.totalFees)}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="rounded-2xl border border-tech-gold/30 bg-tech-gold/10 px-4 py-3 text-xs text-tech-navy">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
-                  Fee Strategy
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
+                  Tuition total
                 </p>
-                <p className="mt-2">
-                  You pay the online fee {activePlan.feePayments} times across your degree.
+                <p className="mt-2 text-lg font-semibold text-tech-navy">
+                  {formatCurrency(activePlan.totalTuition)}
                 </p>
               </div>
+              <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
+                  Fee total
+                </p>
+                <p className="mt-2 text-lg font-semibold text-tech-navy">
+                  {formatCurrency(activePlan.totalFees)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
+                  Avg per term
+                </p>
+                <p className="mt-2 text-lg font-semibold text-tech-navy">
+                  {formatCurrency(activePlan.averagePerTerm)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-tech-gold/30 bg-tech-white px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-tech-goldDark">
+                  Time to graduate
+                </p>
+                <p className="mt-2 text-lg font-semibold text-tech-navy">
+                  {activePlan.numberOfTerms} semesters
+                </p>
+              </div>
+            </div>
 
+            <div className="rounded-2xl border border-tech-gold/30 bg-tech-gold/10 px-4 py-3 text-xs text-tech-navy">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
+                Fee Strategy
+              </p>
+              <p className="mt-2">
+                You pay the online fee {activePlan.feePayments} times across your degree.
+              </p>
+            </div>
+
+            {paceMode === 'mixed' ? (
               <div className="rounded-2xl border border-tech-gold/30 bg-white px-4 py-3 text-xs text-tech-navy/80">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
-                  Official rates (Spring 2026)
-                </p>
-                <div className="mt-2 space-y-2">
-                  {PROGRAMS.map((program) => (
-                    <div key={program.key} className="flex items-center justify-between">
-                      <span>{program.label}</span>
-                      <span className="font-semibold">
-                        {formatCurrency(program.perCreditRate)}/credit
-                      </span>
-                    </div>
-                  ))}
-                  <div className="border-t border-tech-gold/30 pt-2">
-                    <p>
-                      Fee rule: credits &lt; {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
-                      {formatCurrency(onlineLearningFeeRule.belowThresholdFee)}, credits ≥{' '}
-                      {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
-                      {formatCurrency(onlineLearningFeeRule.atOrAboveThresholdFee)}
-                    </p>
-                  </div>
-                  <div className="border-t border-tech-gold/30 pt-2">
-                    <p className="font-semibold">Degree credit requirements</p>
-                    {PROGRAMS.map((program) => (
-                      <p key={program.key}>
-                        {program.label}: {degreeCreditsByProgram[program.key]} credits
-                      </p>
-                    ))}
-                  </div>
-                  <div className="rounded-lg border border-tech-gold/30 bg-tech-gold/10 px-3 py-2 text-[11px] text-tech-navy/70">
-                    Data transparency:{' '}
-                    <a
-                      href="https://bursar.gatech.edu/student/tuition/sp26/sp26_totalsA.pdf"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-tech-navy underline decoration-tech-gold/60 underline-offset-2"
-                    >
-                      Spring 2026 rates PDF
-                    </a>
-                    .
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {appliedPlan.paceMode === 'mixed' ? (
-              <section className="rounded-2xl border border-tech-gold/30 bg-white px-4 py-3 text-xs text-tech-navy/80 shadow-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-tech-goldDark">
                   Calendar timeline
                 </p>
@@ -759,27 +600,57 @@ const App: React.FC = () => {
                   {mixedPlan.schedule.length === 0 ? (
                     <p className="text-tech-navy/60">Add terms to see a timeline.</p>
                   ) : (
-                    mixedPlan.schedule.map((term) => {
-                      const termTuition =
-                        Math.round(
-                          perCreditRateByProgram[appliedPlan.programKey] * term.credits * 100
-                        ) / 100;
-                      const termTotal =
-                        Math.round((termTuition + term.fee) * 100) / 100;
-                      return (
-                        <div key={term.termLabel} className="flex items-center justify-between">
-                          <span>{term.termLabel}</span>
-                          <span className="font-semibold">
-                            {term.credits} credits | Total: {formatCurrency(termTotal)} (Fee:{' '}
-                            {formatCurrency(term.fee)})
-                          </span>
-                        </div>
-                      );
-                    })
+                    mixedPlan.schedule.map((term) => (
+                      <div key={term.termLabel} className="flex items-center justify-between">
+                        <span>{term.termLabel}</span>
+                        <span className="font-semibold">
+                          {term.credits} credits · {formatCurrency(term.fee)} fee
+                        </span>
+                      </div>
+                    ))
                   )}
                 </div>
-              </section>
+              </div>
             ) : null}
+          </section>
+
+          <aside className="flex flex-col gap-3">
+            <section className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
+              <h2 className="text-sm font-semibold text-tech-goldMedium">
+                Step 4 — Official Rates Panel
+              </h2>
+              <p className="mt-2 text-[11px] text-tech-navy/60">Official Spring 2026 rates.</p>
+              <div className="mt-3 space-y-2">
+                {PROGRAMS.map((program) => (
+                  <div key={program.key} className="flex items-center justify-between">
+                    <span>{program.label}</span>
+                    <span className="font-semibold">
+                      {formatCurrency(program.perCreditRate)}/credit
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t border-tech-gold/30 pt-2">
+                  <p>
+                    Fee rule: credits &lt; {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
+                    {formatCurrency(onlineLearningFeeRule.belowThresholdFee)}, credits ≥{' '}
+                    {onlineLearningFeeRule.thresholdCredits} ⇒{' '}
+                    {formatCurrency(onlineLearningFeeRule.atOrAboveThresholdFee)}
+                  </p>
+                </div>
+                <div className="border-t border-tech-gold/30 pt-2">
+                  <p className="font-semibold">Degree credit requirements</p>
+                  {PROGRAMS.map((program) => (
+                    <p key={program.key}>
+                      {program.label}: {degreeCreditsByProgram[program.key]} credits
+                    </p>
+                  ))}
+                </div>
+                <div className="rounded-lg border border-tech-gold/30 bg-tech-gold/10 px-3 py-2 text-[11px] text-tech-navy/70">
+                  Data transparency: Tuition and fee math comes directly from the Spring 2026
+                  configuration in this dashboard. No external links or hidden markups.
+                </div>
+              </div>
+            </section>
 
             <details className="rounded-2xl border border-tech-gold/40 bg-white p-4 text-xs text-tech-navy/80 shadow-sm">
               <summary className="cursor-pointer text-sm font-semibold text-tech-goldMedium">
@@ -810,7 +681,7 @@ const App: React.FC = () => {
                 </li>
               </ul>
             </details>
-          </section>
+          </aside>
         </main>
       </div>
     </div>
