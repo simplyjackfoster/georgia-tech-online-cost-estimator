@@ -41,7 +41,7 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: "true"
-          GITHUB_PAGES_BASE: "/"
+          GITHUB_PAGES_BASE: "/georgia-tech-online-cost-estimator/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
