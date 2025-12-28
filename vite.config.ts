@@ -6,9 +6,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const isGithubPages = env.GITHUB_PAGES === 'true';
   const isVercel = env.VERCEL === '1';
+  const base =
+    env.VITE_BASE ||
+    env.GITHUB_PAGES_BASE ||
+    (isGithubPages && !isVercel ? '/georgia-tech-online-cost-estimator/' : '/');
 
   return {
-    base: isGithubPages && !isVercel ? '/georgia-tech-online-cost-estimator/' : '/',
+    base,
     plugins: [react()],
     test: {
       environment: 'jsdom',
