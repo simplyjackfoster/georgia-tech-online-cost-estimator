@@ -144,14 +144,18 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
               type="button"
               onClick={() => onDraftProgramChange(program.key)}
               aria-pressed={draftProgramKey === program.key}
-              className={`rounded-xl border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+              className={`min-h-[44px] rounded-lg border px-3.5 py-2.5 text-left transition duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                 draftProgramKey === program.key
-                  ? 'border-tech-gold bg-tech-gold/20'
-                  : 'border-tech-gold/30 bg-tech-white hover:border-tech-gold/60'
+                  ? 'border-tech-gold/70 bg-tech-gold/15 shadow-inner'
+                  : 'border-tech-gold/30 bg-tech-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] hover:border-tech-gold/60 hover:bg-tech-gold/10'
               }`}
             >
-              <p className="text-lg font-semibold text-tech-navy">{program.key.toUpperCase()}</p>
-              <p className="text-xs text-tech-navy/70">{program.label}</p>
+              <p className="text-base font-semibold tracking-[0.08em] leading-tight text-tech-navy">
+                {program.key.toUpperCase()}
+              </p>
+              <p className="text-[10px] leading-tight tracking-[0.06em] text-tech-navy/70">
+                {program.label}
+              </p>
             </button>
           ))}
         </div>
