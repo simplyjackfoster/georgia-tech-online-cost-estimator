@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #003057;
+  background-color: #ffffff;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  color: #a4925a;
+}
+
+input,
+select {
+  color: #003057;
+}
+
+:focus-visible {
+  outline: 2px solid #b3a369;
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: #b3a369;
+  color: #003057;
+}
+
+@media (min-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 420px 460px 380px;
+    align-items: start;
+  }
+}

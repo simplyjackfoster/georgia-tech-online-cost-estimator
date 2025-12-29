@@ -1,0 +1,28 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7F8FA" />
+      <stop offset="1" stop-color="#FFFFFF" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E8B923" />
+      <stop offset="1" stop-color="#C99700" />
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" rx="32" fill="url(#bg)" />
+  <rect x="80" y="80" width="1120" height="560" rx="28" fill="#FFFFFF" stroke="#E5E7EB" />
+  <rect x="120" y="140" width="520" height="18" rx="9" fill="#0A2D5A" />
+  <rect x="120" y="180" width="320" height="14" rx="7" fill="#94A3B8" />
+  <rect x="120" y="240" width="320" height="160" rx="20" fill="#F8FAFC" stroke="#E2E8F0" />
+  <rect x="120" y="430" width="320" height="160" rx="20" fill="#F8FAFC" stroke="#E2E8F0" />
+  <rect x="520" y="240" width="620" height="350" rx="24" fill="#F8FAFC" stroke="#E2E8F0" />
+  <rect x="560" y="280" width="260" height="16" rx="8" fill="#0A2D5A" />
+  <rect x="560" y="310" width="200" height="12" rx="6" fill="#94A3B8" />
+  <rect x="560" y="360" width="540" height="10" rx="5" fill="#CBD5F5" />
+  <rect x="560" y="390" width="500" height="10" rx="5" fill="#CBD5F5" />
+  <rect x="560" y="420" width="440" height="10" rx="5" fill="#CBD5F5" />
+  <rect x="120" y="560" width="220" height="42" rx="21" fill="url(#gold)" />
+  <text x="145" y="588" font-family="'Inter', 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="600" fill="#1E293B">
+    OMSCS Planner Preview
+  </text>
+</svg>

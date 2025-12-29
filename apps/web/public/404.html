@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting…</title>
+    <script>
+      const locationInfo = window.location;
+      const isGithubPages = locationInfo.hostname.endsWith('github.io');
+      const pathSegmentsToKeep = isGithubPages ? 1 : 0;
+      const basePath = locationInfo.pathname
+        .split('/')
+        .slice(0, 1 + pathSegmentsToKeep)
+        .join('/');
+      const search = locationInfo.search || '';
+      const nextUrl = `${locationInfo.origin}${basePath}/${search}`;
+      window.location.replace(nextUrl);
+    </script>
+  </head>
+  <body>
+    <p>Redirecting…</p>
+  </body>
+</html>
