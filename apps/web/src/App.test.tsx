@@ -35,7 +35,26 @@ describe('App', () => {
     ).getByRole('button', { name: /update my plan/i });
     await userEvent.click(planButton);
 
-    expect(screen.getByText(/calendar timeline/i)).toBeInTheDocument();
+    // PlanSummary renders the timeline twice (mobile + desktop layouts), so use getAll*.
+    expect(screen.getAllByText(/calendar timeline/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\d+ credits/i).length).toBeGreaterThan(0);
+  });
+
+  it('defaults to out-of-state tuition', () => {
+    render(<App />);
+
+    // OMSCS: 30 credits × $236 out-of-state
+    expect(screen.getAllByText('$7,080.00').length).toBeGreaterThan(0);
+  });
+
+  it('applies in-state tuition when residency is changed', async () => {
+    render(<App />);
+
+    const configurator = screen.getAllByRole('region', { name: /start your oms plan/i })[0];
+    await userEvent.click(within(configurator).getByRole('button', { name: /^in-state$/i }));
+    await userEvent.click(within(configurator).getByRole('button', { name: /update my plan/i }));
+
+    // OMSCS: 30 credits × $227 in-state
+    expect(screen.getAllByText('$6,810.00').length).toBeGreaterThan(0);
   });
 });

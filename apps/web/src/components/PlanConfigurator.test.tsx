@@ -10,8 +10,10 @@ describe('PlanConfigurator', () => {
       <PlanConfigurator
         draftProgramKey="omscs"
         draftStartTermKey="spring-2026"
+        draftResidency="in-state"
         onDraftProgramChange={vi.fn()}
         onDraftStartTermChange={vi.fn()}
+        onDraftResidencyChange={vi.fn()}
         onApplyDraft={vi.fn()}
         paceMode="constant"
         onPaceModeChange={handlePaceModeChange}
@@ -42,8 +44,10 @@ describe('PlanConfigurator', () => {
       <PlanConfigurator
         draftProgramKey="omscs"
         draftStartTermKey="spring-2026"
+        draftResidency="in-state"
         onDraftProgramChange={vi.fn()}
         onDraftStartTermChange={vi.fn()}
+        onDraftResidencyChange={vi.fn()}
         onApplyDraft={vi.fn()}
         paceMode="mixed"
         onPaceModeChange={vi.fn()}

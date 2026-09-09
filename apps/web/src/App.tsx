@@ -13,6 +13,7 @@ const App: React.FC = () => {
     draftMixedRows,
     draftPaceMode,
     draftProgramKey,
+    draftResidency,
     draftSelectedPace,
     draftStartTermKey,
     handleApplyDraft,
@@ -21,11 +22,13 @@ const App: React.FC = () => {
     mixedPlan,
     paceMode,
     paceRows,
+    residency,
     selectedProgram,
     shareStatus,
     setDraftMixedRows,
     setDraftPaceMode,
     setDraftProgramKey,
+    setDraftResidency,
     setDraftSelectedPace,
     setDraftStartTermKey
   } = usePlanState();
@@ -40,8 +43,10 @@ const App: React.FC = () => {
             <PlanConfigurator
               draftProgramKey={draftProgramKey}
               draftStartTermKey={draftStartTermKey}
+              draftResidency={draftResidency}
               onDraftProgramChange={setDraftProgramKey}
               onDraftStartTermChange={setDraftStartTermKey}
+              onDraftResidencyChange={setDraftResidency}
               onApplyDraft={handleApplyDraft}
               paceMode={draftPaceMode}
               onPaceModeChange={setDraftPaceMode}
@@ -60,6 +65,7 @@ const App: React.FC = () => {
               id="plan-summary"
               activePlan={activePlan}
               selectedProgramKey={selectedProgram?.key}
+              residency={residency}
               paceMode={paceMode}
               mixedSchedule={mixedPlan.schedule}
             />

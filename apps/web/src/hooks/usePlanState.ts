@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  DEFAULT_RESIDENCY,
   PROGRAMS,
   START_TERMS,
   degreeCreditsByProgram,
+  isResidency,
   perCreditRateByProgram,
-  type ProgramKey
+  type ProgramKey,
+  type Residency
 } from '../data/rates';
 import { calculateFullDegree } from '../lib/calc';
 import { reportPlanGenerated } from '../lib/metrics';
@@ -31,6 +34,8 @@ export const usePlanState = () => {
   const [startTermKey, setStartTermKey] = useState<string>(DEFAULT_START_TERM_KEY);
   const [draftProgramKey, setDraftProgramKey] = useState<ProgramKey>('omscs');
   const [draftStartTermKey, setDraftStartTermKey] = useState<string>(DEFAULT_START_TERM_KEY);
+  const [residency, setResidency] = useState<Residency>(DEFAULT_RESIDENCY);
+  const [draftResidency, setDraftResidency] = useState<Residency>(DEFAULT_RESIDENCY);
   const [selectedPace, setSelectedPace] = useState<number>(6);
   const [draftSelectedPace, setDraftSelectedPace] = useState<number>(6);
   const [paceMode, setPaceMode] = useState<'constant' | 'mixed'>('constant');
@@ -50,6 +55,7 @@ export const usePlanState = () => {
     const paceParam = Number(params.get('pace'));
     const modeParam = params.get('mode');
     const mixedParam = params.get('mixed');
+    const residencyParam = params.get('residency');
 
     const resolvedProgramKey =
       programParam && programParam in perCreditRateByProgram
@@ -64,6 +70,10 @@ export const usePlanState = () => {
     setStartTermKey(resolvedStartTermKey);
     setDraftProgramKey(resolvedProgramKey);
     setDraftStartTermKey(resolvedStartTermKey);
+    if (isResidency(residencyParam)) {
+      setResidency(residencyParam);
+      setDraftResidency(residencyParam);
+    }
     if (isPaceOption(paceParam)) {
       setSelectedPace(paceParam);
       setDraftSelectedPace(paceParam);
@@ -82,10 +92,11 @@ export const usePlanState = () => {
   useEffect(() => {
     setDraftProgramKey(programKey);
     setDraftStartTermKey(startTermKey);
+    setDraftResidency(residency);
     setDraftSelectedPace(selectedPace);
     setDraftPaceMode(paceMode);
     setDraftMixedRows(mixedRows);
-  }, [programKey, startTermKey, selectedPace, paceMode, mixedRows]);
+  }, [programKey, startTermKey, residency, selectedPace, paceMode, mixedRows]);
 
   const startTerm = useMemo(() => resolveStartTerm(startTermKey), [startTermKey]);
   const draftStartTerm = useMemo(
@@ -101,7 +112,8 @@ export const usePlanState = () => {
         creditsPerTerm,
         0,
         true,
-        3
+        3,
+        draftResidency
       );
       const finishTerm = getFinishTerm(draftStartTerm, fullDegree.numberOfTerms);
       return {
@@ -110,7 +122,7 @@ export const usePlanState = () => {
         fullDegree
       };
     });
-  }, [draftProgramKey, draftStartTerm]);
+  }, [draftProgramKey, draftStartTerm, draftResidency]);
 
   const appliedPaceRows = useMemo(() => {
     return PACE_OPTIONS.map((creditsPerTerm) => {
@@ -120,7 +132,8 @@ export const usePlanState = () => {
         creditsPerTerm,
         0,
         true,
-        3
+        3,
+        residency
       );
       const finishTerm = getFinishTerm(startTerm, fullDegree.numberOfTerms);
       return {
@@ -129,7 +142,7 @@ export const usePlanState = () => {
         fullDegree
       };
     });
-  }, [programKey, startTerm]);
+  }, [programKey, startTerm, residency]);
 
   const selectedRow =
     appliedPaceRows.find((row) => row.creditsPerTerm === selectedPace) ??
@@ -137,8 +150,14 @@ export const usePlanState = () => {
   const selectedProgram = PROGRAMS.find((program) => program.key === programKey);
   const mixedPlan = useMemo(
     () =>
-      calculateMixedPlan(programKey, degreeCreditsByProgram[programKey], startTerm, mixedRows),
-    [programKey, startTerm, mixedRows]
+      calculateMixedPlan(
+        programKey,
+        degreeCreditsByProgram[programKey],
+        startTerm,
+        mixedRows,
+        residency
+      ),
+    [programKey, startTerm, mixedRows, residency]
   );
   const draftMixedPlan = useMemo(
     () =>
@@ -146,9 +165,10 @@ export const usePlanState = () => {
         draftProgramKey,
         degreeCreditsByProgram[draftProgramKey],
         draftStartTerm,
-        draftMixedRows
+        draftMixedRows,
+        draftResidency
       ),
-    [draftProgramKey, draftStartTerm, draftMixedRows]
+    [draftProgramKey, draftStartTerm, draftMixedRows, draftResidency]
   );
   const activePlan =
     paceMode === 'mixed'
@@ -173,6 +193,7 @@ export const usePlanState = () => {
     shouldTrackPlanGenerated.current = true;
     setProgramKey(draftProgramKey);
     setStartTermKey(draftStartTermKey);
+    setResidency(draftResidency);
     setSelectedPace(draftSelectedPace);
     setPaceMode(draftPaceMode);
     setMixedRows(draftMixedRows);
@@ -180,6 +201,7 @@ export const usePlanState = () => {
     draftMixedRows,
     draftPaceMode,
     draftProgramKey,
+    draftResidency,
     draftSelectedPace,
     draftStartTermKey
   ]);
@@ -217,7 +239,14 @@ export const usePlanState = () => {
   }, []);
 
   const handleShare = useCallback(async () => {
-    const url = buildShareUrl(programKey, startTermKey, selectedPace, paceMode, mixedRows);
+    const url = buildShareUrl(
+      programKey,
+      startTermKey,
+      selectedPace,
+      paceMode,
+      mixedRows,
+      residency
+    );
     try {
       await navigator.clipboard.writeText(url);
       setShareStatus('copied');
@@ -232,6 +261,7 @@ export const usePlanState = () => {
     mixedRows,
     paceMode,
     programKey,
+    residency,
     scheduleShareReset,
     selectedPace,
     startTermKey
@@ -243,8 +273,10 @@ export const usePlanState = () => {
     draftMixedRows,
     draftPaceMode,
     draftProgramKey,
+    draftResidency,
     draftSelectedPace,
     draftStartTermKey,
+    residency,
     handleApplyDraft,
     handleShare,
     isDraftMixedIncomplete,
@@ -261,6 +293,7 @@ export const usePlanState = () => {
     setDraftMixedRows,
     setDraftPaceMode,
     setDraftProgramKey,
+    setDraftResidency,
     setDraftSelectedPace,
     setDraftStartTermKey,
     setMixedRows,

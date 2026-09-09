@@ -1,5 +1,11 @@
 import React from 'react';
-import { PROGRAMS, degreeCreditsByProgram, onlineLearningFeeRule } from '../data/rates';
+import {
+  PROGRAMS,
+  RESIDENCY_OPTIONS,
+  degreeCreditsByProgram,
+  getPerCreditRate,
+  onlineLearningFeeRule
+} from '../data/rates';
 import { formatCurrency } from '../lib/calc';
 import Accordion from './Accordion';
 import TrustCard from './TrustCard';
@@ -8,16 +14,36 @@ const InfoSidebar: React.FC = () => {
   const officialRatesContent = (
     <>
       <p className="mt-2 text-[11px] text-tech-navy/60">
-        Sources: Office of the Bursar Fall 2026 tuition totals (in-state rates). Last updated:
-        September 2026.
+        Sources: Office of the Bursar Fall 2026 tuition totals. Last updated: September 2026.
       </p>
       <div className="mt-3 space-y-2">
-        {PROGRAMS.map((program) => (
-          <div key={program.key} className="flex items-center justify-between">
-            <span>{program.label}</span>
-            <span className="font-semibold">{formatCurrency(program.perCreditRate)}/credit</span>
-          </div>
-        ))}
+        <table className="w-full text-left text-[11px]">
+          <thead>
+            <tr className="text-tech-navy/60">
+              <th className="pb-1 font-medium">Per credit</th>
+              {RESIDENCY_OPTIONS.map((option) => (
+                <th key={option.key} className="pb-1 text-right font-medium">
+                  {option.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {PROGRAMS.map((program) => (
+              <tr key={program.key}>
+                <td className="py-0.5 pr-2">{program.key.toUpperCase()}</td>
+                {RESIDENCY_OPTIONS.map((option) => (
+                  <td key={option.key} className="py-0.5 text-right font-semibold tabular-nums">
+                    {formatCurrency(getPerCreditRate(program.key, option.key))}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="text-[11px] text-tech-navy/60">
+          Students admitted before Fall 2025 pay the in-state rate regardless of residency.
+        </p>
         <div className="border-t border-tech-gold/30 pt-2">
           <p>
             Fee rule: credits &lt; {onlineLearningFeeRule.thresholdCredits} ⇒{' '}

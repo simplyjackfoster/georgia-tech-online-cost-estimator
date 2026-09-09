@@ -14,6 +14,7 @@ A single-page web app for estimating tuition and online learning fees for Georgi
 - Per-term calculator with updated Fall 2026 tuition and online learning fee rules.
 - Full degree mode with credit requirements, auto-term calculation, time-to-graduate estimates, and fee assumptions.
 - Scenario comparison (up to three), with duplicate/reset actions and shareable state encoded in the URL.
+- Residency selector (in-state / out-of-state / out-of-country, defaults to out-of-state) — Fall 2026 is the first term OMS programs charge different rates by residency; students admitted before Fall 2025 pay in-state.
 - Data source card that prints the exact config values used for every calculation.
 
 ## What’s Excluded
@@ -22,13 +23,13 @@ A single-page web app for estimating tuition and online learning fees for Georgi
 
 ## Updating Rates for Future Terms
 1. Open `src/data/rates.ts`.
-2. Update `perCreditRateByProgram` values.
+2. Update `perCreditRateByResidency` values (one row per program, three residency columns).
 3. Update `degreeCreditsByProgram` values if program requirements change.
 4. Update `onlineLearningFeeRule` with the new thresholds/fees.
 5. Update or add test expectations in `src/lib/calc.test.ts`.
 
 ## How Full Degree Fee Estimation Works
-- Tuition is calculated as `required_credits * per_credit_rate`.
+- Tuition is calculated as `required_credits * per_credit_rate`, where the rate depends on program and residency.
 - The online learning fee is estimated using the credits-per-term threshold:
   - credits per term `< 4` → `$212` per term
   - credits per term `≥ 4` → `$531` per term

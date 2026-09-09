@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatCurrency } from '../lib/calc';
 import { type MixedPlanResult } from '../lib/plan';
-import { type ProgramKey } from '../data/rates';
+import { RESIDENCY_OPTIONS, type ProgramKey, type Residency } from '../data/rates';
 
 type ActivePlan = MixedPlanResult & {
   finishTerm: { label: string };
@@ -10,6 +10,7 @@ type ActivePlan = MixedPlanResult & {
 type PlanSummaryProps = {
   activePlan: ActivePlan;
   selectedProgramKey?: ProgramKey;
+  residency?: Residency;
   paceMode: 'constant' | 'mixed';
   mixedSchedule: MixedPlanResult['schedule'];
   id?: string;
@@ -18,10 +19,12 @@ type PlanSummaryProps = {
 const PlanSummary: React.FC<PlanSummaryProps> = ({
   activePlan,
   selectedProgramKey,
+  residency,
   paceMode,
   mixedSchedule,
   id
 }) => {
+  const residencyLabel = RESIDENCY_OPTIONS.find((option) => option.key === residency)?.label;
   return (
     <section
       id={id}
@@ -35,7 +38,10 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
         <div className="mt-3">
           <p className="text-3xl font-semibold">{formatCurrency(activePlan.totalCost)}</p>
           <p className="text-[11px] uppercase tracking-[0.2em] text-tech-gold">Total Degree Cost</p>
-          <p className="mt-1 text-xs text-tech-gold">Finish {activePlan.finishTerm.label}</p>
+          <p className="mt-1 text-xs text-tech-gold">
+            Finish {activePlan.finishTerm.label}
+            {residencyLabel ? ` · ${residencyLabel} rates` : ''}
+          </p>
         </div>
         <div className="mt-4 grid gap-2 text-xs">
           <div className="flex items-center justify-between">
@@ -76,6 +82,9 @@ const PlanSummary: React.FC<PlanSummaryProps> = ({
             <p className="mt-1 text-sm font-semibold text-tech-white">
               {activePlan.finishTerm.label}
             </p>
+            {residencyLabel ? (
+              <p className="text-[10px] text-tech-gold">{residencyLabel} rates</p>
+            ) : null}
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.2em] text-tech-gold">

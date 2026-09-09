@@ -1,5 +1,14 @@
 import React from 'react';
-import { PROGRAMS, START_TERMS, degreeCreditsByProgram, type ProgramKey } from '../data/rates';
+import {
+  PROGRAMS,
+  RESIDENCY_OPTIONS,
+  START_TERMS,
+  degreeCreditsByProgram,
+  getPerCreditRate,
+  type ProgramKey,
+  type Residency
+} from '../data/rates';
+import { formatCurrency } from '../lib/calc';
 import {
   buildTermLabel,
   resolveStartTerm,
@@ -19,8 +28,10 @@ type PaceRow = {
 type PlanConfiguratorProps = {
   draftProgramKey: ProgramKey;
   draftStartTermKey: string;
+  draftResidency: Residency;
   onDraftProgramChange: (programKey: ProgramKey) => void;
   onDraftStartTermChange: (termKey: string) => void;
+  onDraftResidencyChange: (residency: Residency) => void;
   onApplyDraft: () => void;
   paceMode: 'constant' | 'mixed';
   onPaceModeChange: (mode: 'constant' | 'mixed') => void;
@@ -79,8 +90,10 @@ const compressTermCredits = (credits: number[]): MixedLoadRow[] => {
 const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
   draftProgramKey,
   draftStartTermKey,
+  draftResidency,
   onDraftProgramChange,
   onDraftStartTermChange,
+  onDraftResidencyChange,
   onApplyDraft,
   paceMode,
   onPaceModeChange,
@@ -159,6 +172,31 @@ const PlanConfigurator: React.FC<PlanConfiguratorProps> = ({
             </button>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="text-xs font-semibold text-tech-navy">Residency</legend>
+        <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Residency">
+          {RESIDENCY_OPTIONS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => onDraftResidencyChange(option.key)}
+              aria-pressed={draftResidency === option.key}
+              className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                draftResidency === option.key
+                  ? 'border-tech-navy bg-tech-navy text-tech-white'
+                  : 'border-tech-gold/40 bg-white text-tech-goldDark hover:bg-tech-gold/10'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-tech-navy/60">
+          {formatCurrency(getPerCreditRate(draftProgramKey, draftResidency))}/credit. Admitted before
+          Fall 2025? You pay the in-state rate.
+        </p>
       </fieldset>
 
       <div>

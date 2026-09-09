@@ -1,10 +1,13 @@
 import {
+  DEFAULT_RESIDENCY,
   MAX_CREDITS_PER_TERM,
   MAX_TERMS,
   degreeCreditsByProgram,
+  getPerCreditRate,
   onlineLearningFeeRule,
   perCreditRateByProgram,
-  type ProgramKey
+  type ProgramKey,
+  type Residency
 } from '../data/rates';
 
 export type Mode = 'per-term' | 'full-degree';
@@ -74,11 +77,15 @@ export const getOnlineLearningFee = (credits: number): number => {
     : onlineLearningFeeRule.atOrAboveThresholdFee;
 };
 
-export const calculatePerTerm = (programKey: ProgramKey, credits: number): PerTermResult => {
+export const calculatePerTerm = (
+  programKey: ProgramKey,
+  credits: number,
+  residency: Residency = DEFAULT_RESIDENCY
+): PerTermResult => {
   if (!Number.isFinite(credits) || credits <= 0) {
     return { tuition: 0, onlineLearningFee: 0, total: 0 };
   }
-  const tuition = Math.round(perCreditRateByProgram[programKey] * credits * 100) / 100;
+  const tuition = Math.round(getPerCreditRate(programKey, residency) * credits * 100) / 100;
   const onlineLearningFee = getOnlineLearningFee(credits);
   const total = Math.round((tuition + onlineLearningFee) * 100) / 100;
   return { tuition, onlineLearningFee, total };
@@ -90,7 +97,8 @@ export const calculateFullDegree = (
   creditsPerTerm: number,
   termsInput: number,
   useAutoTerms: boolean,
-  termsPerYear: number
+  termsPerYear: number,
+  residency: Residency = DEFAULT_RESIDENCY
 ): FullDegreeResult => {
   if (!Number.isFinite(totalCredits) || totalCredits <= 0) {
     return {
@@ -111,7 +119,8 @@ export const calculateFullDegree = (
       : 0
     : Math.max(0, termsInput);
   const feePerTerm = getOnlineLearningFee(normalizedCreditsPerTerm);
-  const totalTuition = Math.round(perCreditRateByProgram[programKey] * totalCredits * 100) / 100;
+  const totalTuition =
+    Math.round(getPerCreditRate(programKey, residency) * totalCredits * 100) / 100;
   const totalFees = Math.round(feePerTerm * numberOfTerms * 100) / 100;
   const totalCost = Math.round((totalTuition + totalFees) * 100) / 100;
   const averagePerTerm =

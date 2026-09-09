@@ -1,4 +1,12 @@
-import { START_TERMS, perCreditRateByProgram, type ProgramKey, type StartTermOption, type TermSeason } from '../data/rates';
+import {
+  DEFAULT_RESIDENCY,
+  START_TERMS,
+  getPerCreditRate,
+  type ProgramKey,
+  type Residency,
+  type StartTermOption,
+  type TermSeason
+} from '../data/rates';
 import { getOnlineLearningFee } from './calc';
 
 export const PACE_OPTIONS = [3, 6, 9] as const;
@@ -61,13 +69,15 @@ export const buildShareUrl = (
   startTermKey: string,
   pace: number,
   mode: 'constant' | 'mixed',
-  mixedRows: MixedLoadRow[]
+  mixedRows: MixedLoadRow[],
+  residency: Residency = DEFAULT_RESIDENCY
 ): string => {
   const params = new URLSearchParams();
   params.set('program', programKey);
   params.set('start', startTermKey);
   params.set('pace', String(pace));
   params.set('mode', mode);
+  params.set('residency', residency);
   if (mode === 'mixed') {
     const serialized = mixedRows
       .map((row) => `${row.terms}x${row.creditsPerTerm}`)
@@ -82,8 +92,10 @@ export const calculateMixedPlan = (
   programKey: ProgramKey,
   totalCredits: number,
   startTerm: StartTermOption,
-  rows: MixedLoadRow[]
+  rows: MixedLoadRow[],
+  residency: Residency = DEFAULT_RESIDENCY
 ): MixedPlanResult => {
+  const perCreditRate = getPerCreditRate(programKey, residency);
   const sanitizedRows = rows.map((row) => ({
     ...row,
     terms: Number.isFinite(row.terms) ? Math.max(0, row.terms) : 0,
@@ -107,8 +119,7 @@ export const calculateMixedPlan = (
       numberOfTerms += 1;
       const creditsThisTerm = Math.min(row.creditsPerTerm, creditsRemaining);
       const fee = getOnlineLearningFee(creditsThisTerm);
-      const tuition =
-        Math.round(perCreditRateByProgram[programKey] * creditsThisTerm * 100) / 100;
+      const tuition = Math.round(perCreditRate * creditsThisTerm * 100) / 100;
       const total = Math.round((tuition + fee) * 100) / 100;
       totalTuition = Math.round((totalTuition + tuition) * 100) / 100;
       totalFees = Math.round((totalFees + fee) * 100) / 100;
