@@ -14,10 +14,13 @@ export const PROGRAM_LABELS: Record<ProgramKey, string> = {
   omscsec: 'MS in Cybersecurity (OMSCSEC)'
 };
 
+// Fall 2026 in-state (resident) per-credit rates. Starting Fall 2026 the Bursar
+// lists separate out-of-state / out-of-country rates for OMS programs
+// (OMSA 343/360, OMSCS 236/248, OMSCSEC 387/406); the planner uses in-state.
 export const perCreditRateByProgram: Record<ProgramKey, number> = {
-  omsa: 327,
-  omscs: 225,
-  omscsec: 369
+  omsa: 330,
+  omscs: 227,
+  omscsec: 373
 };
 
 export const degreeCreditsByProgram: Record<ProgramKey, number> = {
@@ -28,8 +31,8 @@ export const degreeCreditsByProgram: Record<ProgramKey, number> = {
 
 export const onlineLearningFeeRule = {
   thresholdCredits: 4,
-  belowThresholdFee: 176,
-  atOrAboveThresholdFee: 440
+  belowThresholdFee: 212,
+  atOrAboveThresholdFee: 531
 };
 
 export const MAX_CREDITS_PER_TERM = 21;

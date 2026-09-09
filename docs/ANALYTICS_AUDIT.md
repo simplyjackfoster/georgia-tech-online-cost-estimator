@@ -1,21 +1,27 @@
-# Analytics Audit (Umami)
+# Analytics Audit
 
 ## Repository scan targets
-- `umami`, `window.umami`, `track(`, `plan_generated`, `x-umami-api-key`, `api.umami.is`, `cloud.umami.is`
+- `umami`, `window.umami`, `track(`, `plan_generated`, `plans-generated`, `KV_REST_API`
 
 ## Current implementation
 
-### Tracking snippet location
-- `apps/web/index.html` loads `https://cloud.umami.is/script.js` with `data-website-id="ef415650-dc26-4445-a007-651d425fc764"`.
+### Umami (dashboard only)
+- `apps/web/index.html` loads `https://cloud.umami.is/script.js` with the site's `data-website-id`.
+- `apps/web/src/lib/metrics.ts` → `reportPlanGenerated()` fires `window.umami?.track('plan_generated')`.
+- Umami is used purely for the hosted dashboard (countries, devices, referrers). Nothing reads Umami data back: Umami Cloud gates its API behind the Pro plan.
 
-### Event firing location
-- `apps/web/src/hooks/usePlanState.ts` fires `window.umami?.track('plan_generated')` after `handleApplyDraft` updates state and the plan is deemed valid.
-
-### Server-side Umami API usage
-- `apps/api/api/metrics/plans-generated.ts` fetches Umami events to count `plan_generated` and returns `{ count, days, updatedAt }`.
+### Plan counter (usage metric shown on the site)
+- Same `reportPlanGenerated()` also POSTs to `${VITE_API_BASE_URL}/api/metrics/plans-generated` (fire-and-forget, `keepalive`).
+- `apps/api/api/metrics/plans-generated.ts` stores counts in Upstash Redis via its REST API (`apps/api/lib/upstashStore.ts`, no npm dependency):
+  - `plans:YYYY-MM-DD` (UTC) — one integer per day, kept forever
+  - `plans:total` — lifetime count
+- `GET ?days=N` (default 30, max 3650) returns `{ count, days, updatedAt }`; `?days=all` returns the lifetime total; `&series=1` adds `[{ date, count }]` per day for long-term analysis.
+- `apps/web/src/hooks/usePlansGeneratedCount.ts` fetches `days=30` for the trust card.
 
 ### Environment variables
-- Docs reference `UMAMI_API_KEY`, `UMAMI_WEBSITE_ID`, and optional `UMAMI_API_ENDPOINT` for the Vercel API (`docs/README.md`).
+- Vercel (injected by the Upstash Marketplace integration): `KV_REST_API_URL`, `KV_REST_API_TOKEN` (`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` also accepted).
+- GitHub Pages build: `VITE_API_BASE_URL`.
 
-## Issues found
-- None. The serverless API uses `https://api.umami.is/v1`, includes the `x-umami-api-key` header, paginates, filters on `eventType === 2`, and reads website configuration from env.
+## Known limitations
+- The POST endpoint is unauthenticated; the count is a vanity metric and can be inflated by anyone with `curl`.
+- History before 2026-09 lived in a Umami account that is no longer accessible; the counter starts from zero.

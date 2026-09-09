@@ -4,14 +4,14 @@ A single-page web app for estimating tuition and online learning fees for Georgi
 
 ![OMS degree planning calculator screenshot](public/screenshot.svg)
 
-**Rates set from provided Spring 2026 PDF and explicit values in this prompt.**
+**Rates set from the Office of the Bursar Fall 2026 tuition totals PDF (in-state rates).**
 
 ## Why React + TypeScript + Vite
 - **React + TypeScript** provide type-safe UI development with reusable components and predictable state management.
 - **Vite** delivers fast local development and a lean, offline-friendly production bundle.
 
 ## What’s Included
-- Per-term calculator with updated Spring 2026 tuition and online learning fee rules.
+- Per-term calculator with updated Fall 2026 tuition and online learning fee rules.
 - Full degree mode with credit requirements, auto-term calculation, time-to-graduate estimates, and fee assumptions.
 - Scenario comparison (up to three), with duplicate/reset actions and shareable state encoded in the URL.
 - Data source card that prints the exact config values used for every calculation.
@@ -30,8 +30,8 @@ A single-page web app for estimating tuition and online learning fees for Georgi
 ## How Full Degree Fee Estimation Works
 - Tuition is calculated as `required_credits * per_credit_rate`.
 - The online learning fee is estimated using the credits-per-term threshold:
-  - credits per term `< 4` → `$176` per term
-  - credits per term `≥ 4` → `$440` per term
+  - credits per term `< 4` → `$212` per term
+  - credits per term `≥ 4` → `$531` per term
 - Total fees are `fee_per_term * number_of_terms` (auto or manually entered).
 - The estimate assumes the same credits-per-term every term.
 

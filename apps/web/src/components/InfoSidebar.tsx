@@ -8,7 +8,8 @@ const InfoSidebar: React.FC = () => {
   const officialRatesContent = (
     <>
       <p className="mt-2 text-[11px] text-tech-navy/60">
-        Sources: Office of the Bursar Spring 2026 tuition totals. Last updated: December 2026.
+        Sources: Office of the Bursar Fall 2026 tuition totals (in-state rates). Last updated:
+        September 2026.
       </p>
       <div className="mt-3 space-y-2">
         {PROGRAMS.map((program) => (
@@ -36,12 +37,12 @@ const InfoSidebar: React.FC = () => {
         <div className="rounded-lg border border-tech-gold/30 bg-tech-gold/10 px-3 py-2 text-[11px] text-tech-navy/70">
           Data transparency:{' '}
           <a
-            href="https://bursar.gatech.edu/student/tuition/sp26/sp26_totalsA.pdf"
+            href="https://bursar.gatech.edu/student/tuition/fa26/fa26_totals.pdf"
             className="text-tech-navy underline"
             target="_blank"
             rel="noreferrer"
           >
-            Office of the Bursar Spring 2026 tuition totals
+            Office of the Bursar Fall 2026 tuition totals
           </a>
           . Tuition and fee math aligns with the Online MS program totals.
         </div>

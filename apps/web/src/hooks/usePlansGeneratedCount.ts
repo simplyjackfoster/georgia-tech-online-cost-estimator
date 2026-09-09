@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { plansGeneratedUrl } from '../lib/metrics';
 
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const DEFAULT_DAYS = 30;
@@ -74,10 +75,8 @@ const isCacheFresh = (entry: CacheEntry | null, days: number) => {
 
 export const usePlansGeneratedCount = (days: number = DEFAULT_DAYS) => {
   const metricsUrl = useMemo(() => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? '';
-    return apiBaseUrl
-      ? `${apiBaseUrl}/api/metrics/plans-generated?days=${days}`
-      : '';
+    const baseUrl = plansGeneratedUrl(import.meta.env.VITE_API_BASE_URL);
+    return baseUrl ? `${baseUrl}?days=${days}` : '';
   }, [days]);
   const initialCache = isCacheFresh(cachedResult, days) ? cachedResult : null;
   const [count, setCount] = useState<number | null>(initialCache?.count ?? null);

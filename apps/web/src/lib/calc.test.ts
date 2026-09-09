@@ -5,40 +5,40 @@ describe('calculatePerTerm', () => {
   it('calculates OMSCS 3 credits correctly', () => {
     const result = calculatePerTerm('omscs', 3);
 
-    expect(result.tuition).toBe(675);
-    expect(result.onlineLearningFee).toBe(176);
-    expect(result.total).toBe(851);
+    expect(result.tuition).toBe(681);
+    expect(result.onlineLearningFee).toBe(212);
+    expect(result.total).toBe(893);
   });
 
   it('calculates OMSCS 6 credits correctly', () => {
     const result = calculatePerTerm('omscs', 6);
 
-    expect(result.tuition).toBe(1350);
-    expect(result.onlineLearningFee).toBe(440);
-    expect(result.total).toBe(1790);
+    expect(result.tuition).toBe(1362);
+    expect(result.onlineLearningFee).toBe(531);
+    expect(result.total).toBe(1893);
   });
 
   it('calculates OMSA 6 credits correctly', () => {
     const result = calculatePerTerm('omsa', 6);
 
-    expect(result.tuition).toBe(1962);
-    expect(result.onlineLearningFee).toBe(440);
-    expect(result.total).toBe(2402);
+    expect(result.tuition).toBe(1980);
+    expect(result.onlineLearningFee).toBe(531);
+    expect(result.total).toBe(2511);
   });
 
   it('calculates OMSCSEC 3 credits correctly', () => {
     const result = calculatePerTerm('omscsec', 3);
 
-    expect(result.tuition).toBe(1107);
-    expect(result.onlineLearningFee).toBe(176);
-    expect(result.total).toBe(1283);
+    expect(result.tuition).toBe(1119);
+    expect(result.onlineLearningFee).toBe(212);
+    expect(result.total).toBe(1331);
   });
 
   it('handles edge credit values', () => {
-    expect(calculatePerTerm('omscs', 1).onlineLearningFee).toBe(176);
-    expect(calculatePerTerm('omscs', 3).onlineLearningFee).toBe(176);
-    expect(calculatePerTerm('omscs', 4).onlineLearningFee).toBe(440);
-    expect(calculatePerTerm('omscs', 21).tuition).toBe(4725);
+    expect(calculatePerTerm('omscs', 1).onlineLearningFee).toBe(212);
+    expect(calculatePerTerm('omscs', 3).onlineLearningFee).toBe(212);
+    expect(calculatePerTerm('omscs', 4).onlineLearningFee).toBe(531);
+    expect(calculatePerTerm('omscs', 21).tuition).toBe(4767);
   });
 
   it('returns zero totals for invalid inputs', () => {
@@ -52,20 +52,20 @@ describe('calculateFullDegree', () => {
     const result = calculateFullDegree('omscs', 30, 6, 0, true, 3);
 
     expect(result.numberOfTerms).toBe(5);
-    expect(result.totalTuition).toBe(6750);
-    expect(result.feePerTerm).toBe(440);
-    expect(result.totalFees).toBe(2200);
-    expect(result.totalCost).toBe(8950);
+    expect(result.totalTuition).toBe(6810);
+    expect(result.feePerTerm).toBe(531);
+    expect(result.totalFees).toBe(2655);
+    expect(result.totalCost).toBe(9465);
   });
 
   it('calculates full degree totals with manual terms', () => {
     const result = calculateFullDegree('omsa', 36, 3, 12, false, 2);
 
     expect(result.numberOfTerms).toBe(12);
-    expect(result.totalTuition).toBe(11772);
-    expect(result.feePerTerm).toBe(176);
-    expect(result.totalFees).toBe(2112);
-    expect(result.totalCost).toBe(13884);
+    expect(result.totalTuition).toBe(11880);
+    expect(result.feePerTerm).toBe(212);
+    expect(result.totalFees).toBe(2544);
+    expect(result.totalCost).toBe(14424);
   });
 
   it('handles invalid inputs in full degree mode', () => {

@@ -19,19 +19,24 @@
 ## apps/api (Vercel)
 1. Create a new Vercel project linked to this repo.
 2. Set the project root directory to `apps/api`.
-3. Add the environment variables `UMAMI_API_KEY`, `UMAMI_WEBSITE_ID`, and (optionally) `UMAMI_API_ENDPOINT` in the Vercel dashboard.
-4. Deploy; the API endpoint will be available at `/api/metrics/plans-generated`.
+3. In the Vercel dashboard, add the **Upstash Redis** integration from the Marketplace (free tier) and connect it to the project. It injects `KV_REST_API_URL` and `KV_REST_API_TOKEN` automatically.
+4. Deploy; the endpoint is available at `/api/metrics/plans-generated`.
 
-### Why server-side analytics
-- The Umami Cloud API key must remain secret; client-side requests would expose it.
-- The serverless API handles authentication, pagination, and filtering so the browser only receives aggregate counts.
+### Endpoint reference
+- `POST /api/metrics/plans-generated` — increments today's counter and the lifetime total. Returns `204`.
+- `GET /api/metrics/plans-generated?days=30` — `{ count, days, updatedAt }` for the last N days (max 3650).
+- `GET ...?days=all` — lifetime total.
+- `GET ...?days=365&series=1` — adds `series: [{ date, count }]`, one entry per UTC day, oldest first.
 
-## Umami Cloud verification
-- See `docs/UMAMI_CLOUD.md` for the API base URL, auth header, and verification steps.
+### Data model (Upstash Redis)
+- `plans:YYYY-MM-DD` — integer per UTC day, never expires.
+- `plans:total` — lifetime integer.
 
 ## Local verification
-- Start the API locally (ex: `npm --workspace apps/api run dev`) with the Umami env vars set.
-- Verify the endpoint responds with a count:
+- Run the API tests: `npm --workspace apps/api run test:run`.
+- Against production:
   ```bash
-  curl \"http://localhost:3000/api/metrics/plans-generated?days=30\"\n  ```
+  curl -X POST "https://<your-vercel-project>.vercel.app/api/metrics/plans-generated" -i
+  curl "https://<your-vercel-project>.vercel.app/api/metrics/plans-generated?days=30"
+  ```
 - Responses should include `{ count, days, updatedAt }`.

@@ -7,6 +7,7 @@ import {
   type ProgramKey
 } from '../data/rates';
 import { calculateFullDegree } from '../lib/calc';
+import { reportPlanGenerated } from '../lib/metrics';
 import {
   DEFAULT_START_TERM_KEY,
   PACE_OPTIONS,
@@ -195,7 +196,7 @@ export const usePlanState = () => {
     }
 
     shouldTrackPlanGenerated.current = false;
-    window.umami?.track('plan_generated');
+    reportPlanGenerated(import.meta.env.VITE_API_BASE_URL);
   }, [activePlan, isMixedIncomplete, paceMode]);
 
   const scheduleShareReset = useCallback(() => {

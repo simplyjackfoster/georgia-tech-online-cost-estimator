@@ -1,18 +1,7 @@
-const DEFAULT_DAYS = 30;
-const MAX_DAYS = 365;
-const PAGE_SIZE = 200;
-const MAX_PAGES = 200;
+import { countPlans, parseDays, recordPlan, type CounterStore } from '../../lib/planCounter.js';
+import { createUpstashStoreFromEnv } from '../../lib/upstashStore.js';
 
 const CORS_ORIGIN = 'https://omscs.fyi';
-const EVENT_NAME = 'plan_generated';
-const EVENT_TYPE_CUSTOM = 2;
-
-type UmamiEvent = {
-  createdAt?: number;
-  eventName?: string;
-  eventType?: number;
-  sessionId?: string;
-};
 
 type ApiRequest = {
   method?: string;
@@ -27,136 +16,76 @@ type ApiResponse = {
   end: () => void;
 };
 
+type HandlerDeps = {
+  getStore: () => CounterStore | null;
+  now: () => Date;
+};
+
 const setCorsHeaders = (response: ApiResponse) => {
   response.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
-  response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 };
 
-const parseDays = (request: ApiRequest): number => {
-  const queryDays = request.query?.days;
-  const raw = Array.isArray(queryDays) ? queryDays[0] : queryDays;
-
-  if (raw && Number.isFinite(Number(raw))) {
-    const parsed = Math.floor(Number(raw));
-    if (parsed >= 1) {
-      return Math.min(parsed, MAX_DAYS);
-    }
+const queryParam = (request: ApiRequest, key: string): string | undefined => {
+  const value = request.query?.[key];
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw !== undefined) {
+    return raw;
   }
-
   if (request.url) {
     try {
-      const url = new URL(request.url, 'http://localhost');
-      const param = url.searchParams.get('days');
-      if (param && Number.isFinite(Number(param))) {
-        const parsed = Math.floor(Number(param));
-        if (parsed >= 1) {
-          return Math.min(parsed, MAX_DAYS);
-        }
-      }
+      return new URL(request.url, 'http://localhost').searchParams.get(key) ?? undefined;
     } catch (error) {
-      return DEFAULT_DAYS;
+      return undefined;
     }
   }
-
-  return DEFAULT_DAYS;
+  return undefined;
 };
 
-const extractEvents = (payload: unknown): UmamiEvent[] => {
-  if (!payload || typeof payload !== 'object') {
-    return [];
-  }
-  const data = (payload as { data?: unknown }).data;
-  if (!Array.isArray(data)) {
-    return [];
-  }
-  return data.filter((item): item is UmamiEvent => typeof item === 'object' && item !== null);
-};
+export const createHandler =
+  ({ getStore, now }: HandlerDeps) =>
+  async (request: ApiRequest, response: ApiResponse) => {
+    setCorsHeaders(response);
 
-const fetchEventsPage = async (
-  apiKey: string,
-  apiEndpoint: string,
-  websiteId: string,
-  page: number,
-  startAt: number,
-  endAt: number
-): Promise<UmamiEvent[]> => {
-  const params = new URLSearchParams({
-    startAt: String(startAt),
-    endAt: String(endAt),
-    page: String(page),
-    pageSize: String(PAGE_SIZE)
-  });
-  const url = `${apiEndpoint.replace(/\/$/, '')}/websites/${websiteId}/events?${params.toString()}`;
-  const umamiResponse = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      'x-umami-api-key': apiKey
+    if (request.method === 'OPTIONS') {
+      response.status(204).end();
+      return;
     }
-  });
 
-  if (!umamiResponse.ok) {
-    throw new Error('Failed to fetch Umami events');
-  }
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      response.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
 
-  const data = (await umamiResponse.json()) as unknown;
-  return extractEvents(data);
-};
+    const store = getStore();
+    if (!store) {
+      response.status(500).json({ error: 'Plan counter store not configured' });
+      return;
+    }
 
-export default async function handler(request: ApiRequest, response: ApiResponse) {
-  setCorsHeaders(response);
-
-  if (request.method === 'OPTIONS') {
-    response.status(204).end();
-    return;
-  }
-
-  if (request.method !== 'GET') {
-    response.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-
-  const apiKey = process.env.UMAMI_API_KEY;
-  const websiteId = process.env.UMAMI_WEBSITE_ID;
-  const apiEndpoint = process.env.UMAMI_API_ENDPOINT ?? 'https://api.umami.is/v1';
-
-  if (!apiKey || !websiteId) {
-    response.status(500).json({ error: 'Missing Umami configuration' });
-    return;
-  }
-
-  const days = parseDays(request);
-  const endAt = Date.now();
-  const startAt = endAt - days * 24 * 60 * 60 * 1000;
-
-  try {
-    let page = 1;
-    let total = 0;
-
-    while (page <= MAX_PAGES) {
-      const events = await fetchEventsPage(apiKey, apiEndpoint, websiteId, page, startAt, endAt);
-      if (events.length === 0) {
-        break;
+    try {
+      if (request.method === 'POST') {
+        await recordPlan(store, now());
+        response.status(204).end();
+        return;
       }
 
-      total += events.filter(
-        (event) => event.eventType === EVENT_TYPE_CUSTOM && event.eventName === EVENT_NAME
-      ).length;
+      response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      const days = parseDays(queryParam(request, 'days'));
+      const includeSeries = queryParam(request, 'series') === '1';
+      const { count, series } = await countPlans(store, days, now());
 
-      if (events.length < PAGE_SIZE) {
-        break;
-      }
-      page += 1;
+      response.status(200).json({
+        count,
+        days,
+        updatedAt: now().toISOString(),
+        ...(includeSeries && series ? { series } : {})
+      });
+    } catch (error) {
+      console.error('plans-generated failed', error);
+      response.status(500).json({ error: 'Unexpected error fetching plan metrics' });
     }
+  };
 
-    response.status(200).json({
-      count: total,
-      days,
-      updatedAt: new Date().toISOString()
-    });
-  } catch (error) {
-    response.status(500).json({ error: 'Unexpected error fetching plan metrics' });
-  }
-}
+export default createHandler({ getStore: createUpstashStoreFromEnv, now: () => new Date() });
