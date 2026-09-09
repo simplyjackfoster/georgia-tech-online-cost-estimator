@@ -1,62 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { calculateFullDegree, calculatePerTerm, validateScenario } from './calc';
-import { getPerCreditRate } from '../data/rates';
+import { calculateFullDegree, calculateTermCost, getOnlineLearningFee, roundCents } from './calc';
+import { FALL_2026_RATES, getPerCreditRate, type RateTable } from '../data/rates';
 
-describe('calculatePerTerm', () => {
-  it('defaults to out-of-state tuition', () => {
-    expect(calculatePerTerm('omscs', 3).tuition).toBe(708);
-  });
+const TEST_RATES: RateTable = {
+  ...FALL_2026_RATES,
+  label: 'Test',
+  perCredit: {
+    ...FALL_2026_RATES.perCredit,
+    omscs: { 'in-state': 100, 'out-of-state': 200, 'out-of-country': 300 }
+  },
+  onlineLearningFee: { thresholdCredits: 4, belowThresholdFee: 10, atOrAboveThresholdFee: 50 }
+};
 
-  it('calculates OMSCS 3 credits correctly', () => {
-    const result = calculatePerTerm('omscs', 3, 'in-state');
-
-    expect(result.tuition).toBe(681);
-    expect(result.onlineLearningFee).toBe(212);
-    expect(result.total).toBe(893);
-  });
-
-  it('calculates OMSCS 6 credits correctly', () => {
-    const result = calculatePerTerm('omscs', 6, 'in-state');
-
-    expect(result.tuition).toBe(1362);
-    expect(result.onlineLearningFee).toBe(531);
-    expect(result.total).toBe(1893);
-  });
-
-  it('calculates OMSA 6 credits correctly', () => {
-    const result = calculatePerTerm('omsa', 6, 'in-state');
-
-    expect(result.tuition).toBe(1980);
-    expect(result.onlineLearningFee).toBe(531);
-    expect(result.total).toBe(2511);
-  });
-
-  it('calculates OMSCSEC 3 credits correctly', () => {
-    const result = calculatePerTerm('omscsec', 3, 'in-state');
-
-    expect(result.tuition).toBe(1119);
-    expect(result.onlineLearningFee).toBe(212);
-    expect(result.total).toBe(1331);
-  });
-
-  it('handles edge credit values', () => {
-    expect(calculatePerTerm('omscs', 1).onlineLearningFee).toBe(212);
-    expect(calculatePerTerm('omscs', 3).onlineLearningFee).toBe(212);
-    expect(calculatePerTerm('omscs', 4).onlineLearningFee).toBe(531);
-    expect(calculatePerTerm('omscs', 21, 'in-state').tuition).toBe(4767);
-  });
-
-  it('returns zero totals for invalid inputs', () => {
-    expect(calculatePerTerm('omsa', 0).total).toBe(0);
-    expect(calculatePerTerm('omsa', Number.NaN).total).toBe(0);
-  });
-
-  it('uses the residency rate when provided', () => {
-    expect(calculatePerTerm('omscs', 3, 'in-state').tuition).toBe(681);
-    expect(calculatePerTerm('omscs', 3, 'out-of-state').tuition).toBe(708);
-    expect(calculatePerTerm('omscs', 3, 'out-of-country').tuition).toBe(744);
-    expect(calculatePerTerm('omsa', 3, 'out-of-state').tuition).toBe(1029);
-    expect(calculatePerTerm('omscsec', 3, 'out-of-country').tuition).toBe(1218);
+describe('roundCents', () => {
+  it('rounds to two decimals', () => {
+    expect(roundCents(1.005)).toBe(1);
+    expect(roundCents(2.345)).toBe(2.35);
+    expect(roundCents(10)).toBe(10);
   });
 });
 
@@ -72,97 +32,99 @@ describe('getPerCreditRate', () => {
     expect(getPerCreditRate('omscsec', 'out-of-state')).toBe(387);
     expect(getPerCreditRate('omscsec', 'out-of-country')).toBe(406);
   });
+
+  it('defaults to out-of-state', () => {
+    expect(getPerCreditRate('omscs')).toBe(236);
+  });
+
+  it('reads from an injected rate table', () => {
+    expect(getPerCreditRate('omscs', 'in-state', TEST_RATES)).toBe(100);
+  });
+});
+
+describe('getOnlineLearningFee', () => {
+  it('charges the lower fee below the credit threshold', () => {
+    expect(getOnlineLearningFee(1)).toBe(212);
+    expect(getOnlineLearningFee(3)).toBe(212);
+    expect(getOnlineLearningFee(4)).toBe(531);
+    expect(getOnlineLearningFee(9)).toBe(531);
+  });
+
+  it('returns zero for no credits', () => {
+    expect(getOnlineLearningFee(0)).toBe(0);
+    expect(getOnlineLearningFee(Number.NaN)).toBe(0);
+  });
+});
+
+describe('calculateTermCost', () => {
+  it('sums tuition and fee for a term', () => {
+    expect(calculateTermCost('omscs', 3, 'in-state')).toEqual({ tuition: 681, fee: 212, total: 893 });
+    expect(calculateTermCost('omsa', 6, 'in-state')).toEqual({ tuition: 1980, fee: 531, total: 2511 });
+  });
+
+  it('defaults to out-of-state', () => {
+    expect(calculateTermCost('omscs', 3).tuition).toBe(708);
+  });
+
+  it('returns zero totals for invalid inputs', () => {
+    expect(calculateTermCost('omsa', 0).total).toBe(0);
+    expect(calculateTermCost('omsa', Number.NaN).total).toBe(0);
+  });
+
+  it('uses an injected rate table', () => {
+    expect(calculateTermCost('omscs', 3, 'out-of-country', TEST_RATES)).toEqual({
+      tuition: 900,
+      fee: 10,
+      total: 910
+    });
+  });
 });
 
 describe('calculateFullDegree', () => {
-  it('calculates full degree totals with auto terms', () => {
-    const result = calculateFullDegree('omscs', 30, 6, 0, true, 3, 'in-state');
+  it('uses the program degree credits by default', () => {
+    const result = calculateFullDegree({ programKey: 'omscs', creditsPerTerm: 6, residency: 'in-state' });
 
     expect(result.numberOfTerms).toBe(5);
     expect(result.totalTuition).toBe(6810);
     expect(result.feePerTerm).toBe(531);
     expect(result.totalFees).toBe(2655);
     expect(result.totalCost).toBe(9465);
+    expect(result.averagePerTerm).toBe(1893);
   });
 
-  it('calculates full degree totals with manual terms', () => {
-    const result = calculateFullDegree('omsa', 36, 3, 12, false, 2, 'in-state');
+  it('rounds partial terms up', () => {
+    const result = calculateFullDegree({ programKey: 'omsa', creditsPerTerm: 9, residency: 'in-state' });
 
-    expect(result.numberOfTerms).toBe(12);
+    expect(result.numberOfTerms).toBe(4);
     expect(result.totalTuition).toBe(11880);
-    expect(result.feePerTerm).toBe(212);
-    expect(result.totalFees).toBe(2544);
-    expect(result.totalCost).toBe(14424);
   });
 
-  it('applies residency to the full degree tuition', () => {
-    const result = calculateFullDegree('omscs', 30, 6, 0, true, 3, 'out-of-state');
+  it('defaults to out-of-state tuition', () => {
+    const result = calculateFullDegree({ programKey: 'omscs', creditsPerTerm: 6 });
 
     expect(result.totalTuition).toBe(7080);
-    expect(result.totalFees).toBe(2655);
     expect(result.totalCost).toBe(9735);
   });
 
-  it('handles invalid inputs in full degree mode', () => {
-    const result = calculateFullDegree('omsa', 36, 0, 0, true, 3);
-
-    expect(result.numberOfTerms).toBe(0);
-    expect(result.totalFees).toBe(0);
-  });
-});
-
-describe('validateScenario', () => {
-  it('rejects invalid per-term credits', () => {
-    const errors = validateScenario(
-      {
-        id: 'a',
-        label: 'Fall',
-        programKey: 'omscs',
-        credits: 0,
-        creditsPerTerm: 3,
-        terms: 5,
-        useAutoTerms: true,
-        termsPerYear: 3
-      },
-      'per-term'
-    );
-
-    expect(errors.creditsError).toBeDefined();
+  it('accepts an explicit credit total', () => {
+    expect(
+      calculateFullDegree({ programKey: 'omscs', creditsPerTerm: 3, residency: 'in-state', totalCredits: 6 })
+        .numberOfTerms
+    ).toBe(2);
   });
 
-  it('accepts normal per-term credits', () => {
-    const errors = validateScenario(
-      {
-        id: 'b',
-        label: 'Fall',
-        programKey: 'omsa',
-        credits: 3,
-        creditsPerTerm: 6,
-        terms: 6,
-        useAutoTerms: false,
-        termsPerYear: 3
-      },
-      'per-term'
-    );
-
-    expect(errors).toEqual({});
+  it('returns empty totals for invalid inputs', () => {
+    expect(calculateFullDegree({ programKey: 'omsa', creditsPerTerm: 0 }).numberOfTerms).toBe(0);
+    expect(calculateFullDegree({ programKey: 'omsa', creditsPerTerm: 3, totalCredits: 0 }).totalCost).toBe(0);
   });
 
-  it('validates full-degree terms when auto is off', () => {
-    const errors = validateScenario(
-      {
-        id: 'c',
-        label: 'Plan A',
-        programKey: 'omscsec',
-        credits: 3,
-        creditsPerTerm: 3,
-        terms: 0,
-        useAutoTerms: false,
-        termsPerYear: 2
-      },
-      'full-degree'
+  it('uses an injected rate table', () => {
+    const result = calculateFullDegree(
+      { programKey: 'omscs', creditsPerTerm: 6, residency: 'out-of-state' },
+      TEST_RATES
     );
 
-    expect(errors.termsError).toBeDefined();
+    expect(result.totalTuition).toBe(6000);
+    expect(result.totalFees).toBe(250);
   });
 });

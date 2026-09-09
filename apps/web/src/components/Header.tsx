@@ -1,8 +1,9 @@
 import React from 'react';
+import type { ShareStatus } from '../hooks/useShareLink';
 
 type HeaderProps = {
   onShare: () => void;
-  shareStatus: 'idle' | 'copied' | 'error';
+  shareStatus: ShareStatus;
 };
 
 const Header: React.FC<HeaderProps> = ({ onShare, shareStatus }) => {
@@ -27,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ onShare, shareStatus }) => {
           <button
             type="button"
             onClick={onShare}
-            className={`relative isolate inline-flex min-w-[160px] items-center justify-center overflow-hidden rounded-lg px-4 py-2 font-semibold transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tech-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+            className={`focus-ring relative isolate inline-flex min-w-[160px] items-center justify-center overflow-hidden rounded-lg px-4 py-2 font-semibold transition-all duration-300 ease-out ${
               isCopied
                 ? 'bg-tech-goldDark text-tech-navy'
                 : isError

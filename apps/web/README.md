@@ -1,51 +1,52 @@
 # Georgia Tech Online Program Cost Calculator
 
-A single-page web app for estimating tuition and online learning fees for Georgia Tech online graduate programs. The calculator supports scenario comparisons, per-term vs full-degree planning, and shareable URLs.
+A single-page web app for estimating tuition and online learning fees for Georgia Tech online graduate programs (OMSCS, OMSA, OMSCSEC). Pick a program, residency, start term, and pace; the planner shows total cost, terms needed, finish term, and a per-term timeline for custom schedules, with a shareable URL.
 
 ![OMS degree planning calculator screenshot](public/screenshot.svg)
 
-**Rates set from the Office of the Bursar Fall 2026 tuition totals PDF (in-state rates).**
+**Rates set from the Office of the Bursar Fall 2026 tuition totals PDF.**
 
-## Why React + TypeScript + Vite
-- **React + TypeScript** provide type-safe UI development with reusable components and predictable state management.
-- **Vite** delivers fast local development and a lean, offline-friendly production bundle.
+## Architecture
+- `src/data/rates.ts` — the Bursar term sheet as a `RateTable` (per-credit rates by program × residency, online learning fee rule, degree credits). Swap `CURRENT_RATES` to change terms.
+- `src/lib/calc.ts` — pure money math (`calculateTermCost`, `calculateFullDegree`); every function accepts an optional `RateTable`.
+- `src/lib/plan.ts` — `PlanSelection` (what the user chose), URL parse/serialize, pace rows, mixed-schedule math, and `resolvePlan` which turns a selection into the displayed `PlanResult`.
+- `src/lib/mixedRows.ts` — run-length encoding helpers for the custom-schedule editor.
+- `src/hooks/usePlanState.ts` — draft vs. applied selection; `useShareLink.ts` — clipboard + status; `usePlansGeneratedCount.ts` — the usage counter.
+- `src/components/` — presentational only. `ChoiceGroup` renders native-radio pills/tiles; `Accordion` collapses only on mobile via `useMediaQuery`.
 
 ## What’s Included
-- Per-term calculator with updated Fall 2026 tuition and online learning fee rules.
-- Full degree mode with credit requirements, auto-term calculation, time-to-graduate estimates, and fee assumptions.
-- Scenario comparison (up to three), with duplicate/reset actions and shareable state encoded in the URL.
-- Residency selector (in-state / out-of-state / out-of-country, defaults to out-of-state) — Fall 2026 is the first term OMS programs charge different rates by residency; students admitted before Fall 2025 pay in-state.
-- Data source card that prints the exact config values used for every calculation.
+- Program, residency (in-state / out-of-state / out-of-country, defaults to out-of-state), and start-term selection with Fall 2026 rates. Students admitted before Fall 2025 pay the in-state rate.
+- Constant pace (3/6/9 credits per term) or a custom per-term schedule with a calendar timeline.
+- Shareable state encoded in the URL (`?program=&residency=&start=&pace=&mode=&mixed=`).
+- Official-rates card with all residency columns and a link to the source PDF.
 
 ## What’s Excluded
 - No other mandatory campus fees are added.
-- Optional fees are not included in totals unless explicitly added (none are enabled by default).
+- Optional or program-specific fees are not included.
 
 ## Updating Rates for Future Terms
-1. Open `src/data/rates.ts`.
-2. Update `perCreditRateByResidency` values (one row per program, three residency columns).
-3. Update `degreeCreditsByProgram` values if program requirements change.
-4. Update `onlineLearningFeeRule` with the new thresholds/fees.
-5. Update or add test expectations in `src/lib/calc.test.ts`.
+1. Add a new `RateTable` in `src/data/rates.ts` (copy `FALL_2026_RATES`, update `label`, `sourceUrl`, and the numbers).
+2. Point `CURRENT_RATES` at it.
+3. Update the expected values in `src/lib/calc.test.ts`, `src/lib/plan.test.ts`, `src/App.test.tsx`, and `e2e/degree-planner.spec.ts`, then refresh the snapshot with `npx vitest run -u`.
 
 ## How Full Degree Fee Estimation Works
-- Tuition is calculated as `required_credits * per_credit_rate`, where the rate depends on program and residency.
-- The online learning fee is estimated using the credits-per-term threshold:
-  - credits per term `< 4` → `$212` per term
-  - credits per term `≥ 4` → `$531` per term
-- Total fees are `fee_per_term * number_of_terms` (auto or manually entered).
-- The estimate assumes the same credits-per-term every term.
-
-## Known Limitations
-- Mixing different credit loads across terms can change total fees compared to the estimate.
-- The calculator does not include optional or program-specific fees beyond the online learning fee rule.
+- Tuition is `required_credits × per_credit_rate` for the chosen program and residency.
+- The online learning fee is charged per term by credit load: `< 4` credits → `$212`, `≥ 4` credits → `$531`.
+- Constant pace: `terms = ceil(required_credits / credits_per_term)`, fees = `fee_per_term × terms`.
+- Custom schedule: each term is costed at its own load until the degree's credits are covered; a schedule that doesn't cover the degree is flagged.
 
 ## Development
-Run these commands from the repo root to use the workspace scripts:
+Run these commands from the repo root:
 
 ```bash
 npm install
 npm run dev
+```
+
+## Tests
+```bash
+npm run test:run   # vitest, web + api workspaces
+npm run test:e2e   # playwright (needs `npx --workspace apps/web playwright install chromium` once)
 ```
 
 ## Production Build
@@ -54,10 +55,5 @@ npm run build
 npm run preview
 ```
 
-## Tests
-```bash
-npm run test
-```
-
 ## Deployment
-See `docs/README.md` for deployment steps.
+See `docs/README.md`.

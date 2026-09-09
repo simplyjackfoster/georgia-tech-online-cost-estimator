@@ -1,305 +1,50 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DEFAULT_RESIDENCY,
-  PROGRAMS,
-  START_TERMS,
-  degreeCreditsByProgram,
-  isResidency,
-  perCreditRateByProgram,
-  type ProgramKey,
-  type Residency
-} from '../data/rates';
-import { calculateFullDegree } from '../lib/calc';
+import { useCallback, useMemo, useState } from 'react';
 import { reportPlanGenerated } from '../lib/metrics';
-import {
-  DEFAULT_START_TERM_KEY,
-  PACE_OPTIONS,
-  buildShareUrl,
-  calculateMixedPlan,
-  getFinishTerm,
-  parseMixedRows,
-  resolveStartTerm
-} from '../lib/plan';
+import type { MixedLoadRow } from '../lib/mixedRows';
+import { buildPaceRows, parseSelection, resolvePlan, type PlanSelection } from '../lib/plan';
 
-const DEFAULT_MIXED_ROWS = [
-  { id: 'row-1', terms: 2, creditsPerTerm: 3 },
-  { id: 'row-2', terms: 2, creditsPerTerm: 6 },
-  { id: 'row-3', terms: 1, creditsPerTerm: 3 },
-  { id: 'row-4', terms: 2, creditsPerTerm: 6 },
-  { id: 'row-5', terms: 1, creditsPerTerm: 3 }
-];
+/**
+ * Holds the user's draft selection and the last applied one. Edits go to the
+ * draft; "Update My Plan" copies it to applied, which drives the summary.
+ */
+export const usePlanState = (initialSearch: string = window.location.search) => {
+  const [applied, setApplied] = useState<PlanSelection>(() => parseSelection(initialSearch));
+  const [draft, setDraft] = useState<PlanSelection>(applied);
 
-export const usePlanState = () => {
-  const [programKey, setProgramKey] = useState<ProgramKey>('omscs');
-  const [startTermKey, setStartTermKey] = useState<string>(DEFAULT_START_TERM_KEY);
-  const [draftProgramKey, setDraftProgramKey] = useState<ProgramKey>('omscs');
-  const [draftStartTermKey, setDraftStartTermKey] = useState<string>(DEFAULT_START_TERM_KEY);
-  const [residency, setResidency] = useState<Residency>(DEFAULT_RESIDENCY);
-  const [draftResidency, setDraftResidency] = useState<Residency>(DEFAULT_RESIDENCY);
-  const [selectedPace, setSelectedPace] = useState<number>(6);
-  const [draftSelectedPace, setDraftSelectedPace] = useState<number>(6);
-  const [paceMode, setPaceMode] = useState<'constant' | 'mixed'>('constant');
-  const [draftPaceMode, setDraftPaceMode] = useState<'constant' | 'mixed'>('constant');
-  const [mixedRows, setMixedRows] = useState(DEFAULT_MIXED_ROWS);
-  const [draftMixedRows, setDraftMixedRows] = useState(DEFAULT_MIXED_ROWS);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const shareResetTimer = useRef<number | null>(null);
-  const shouldTrackPlanGenerated = useRef(false);
-  const isPaceOption = (value: number): value is (typeof PACE_OPTIONS)[number] =>
-    PACE_OPTIONS.includes(value as (typeof PACE_OPTIONS)[number]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const programParam = params.get('program');
-    const startParam = params.get('start');
-    const paceParam = Number(params.get('pace'));
-    const modeParam = params.get('mode');
-    const mixedParam = params.get('mixed');
-    const residencyParam = params.get('residency');
-
-    const resolvedProgramKey =
-      programParam && programParam in perCreditRateByProgram
-        ? (programParam as ProgramKey)
-        : 'omscs';
-    const resolvedStartTermKey =
-      startParam && START_TERMS.some((term) => term.key === startParam)
-        ? startParam
-        : DEFAULT_START_TERM_KEY;
-
-    setProgramKey(resolvedProgramKey);
-    setStartTermKey(resolvedStartTermKey);
-    setDraftProgramKey(resolvedProgramKey);
-    setDraftStartTermKey(resolvedStartTermKey);
-    if (isResidency(residencyParam)) {
-      setResidency(residencyParam);
-      setDraftResidency(residencyParam);
-    }
-    if (isPaceOption(paceParam)) {
-      setSelectedPace(paceParam);
-      setDraftSelectedPace(paceParam);
-    }
-    if (modeParam === 'mixed' || modeParam === 'constant') {
-      setPaceMode(modeParam);
-      setDraftPaceMode(modeParam);
-    }
-    const parsedRows = parseMixedRows(mixedParam);
-    if (parsedRows.length > 0) {
-      setMixedRows(parsedRows);
-      setDraftMixedRows(parsedRows);
-    }
+  const updateDraft = useCallback((patch: Partial<PlanSelection>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  useEffect(() => {
-    setDraftProgramKey(programKey);
-    setDraftStartTermKey(startTermKey);
-    setDraftResidency(residency);
-    setDraftSelectedPace(selectedPace);
-    setDraftPaceMode(paceMode);
-    setDraftMixedRows(mixedRows);
-  }, [programKey, startTermKey, residency, selectedPace, paceMode, mixedRows]);
-
-  const startTerm = useMemo(() => resolveStartTerm(startTermKey), [startTermKey]);
-  const draftStartTerm = useMemo(
-    () => resolveStartTerm(draftStartTermKey),
-    [draftStartTermKey]
+  const updateDraftMixedRows = useCallback(
+    (updater: (rows: MixedLoadRow[]) => MixedLoadRow[]) => {
+      setDraft((prev) => ({ ...prev, mixedRows: updater(prev.mixedRows) }));
+    },
+    []
   );
 
-  const paceRows = useMemo(() => {
-    return PACE_OPTIONS.map((creditsPerTerm) => {
-      const fullDegree = calculateFullDegree(
-        draftProgramKey,
-        degreeCreditsByProgram[draftProgramKey],
-        creditsPerTerm,
-        0,
-        true,
-        3,
-        draftResidency
-      );
-      const finishTerm = getFinishTerm(draftStartTerm, fullDegree.numberOfTerms);
-      return {
-        creditsPerTerm,
-        finishTerm,
-        fullDegree
-      };
-    });
-  }, [draftProgramKey, draftStartTerm, draftResidency]);
-
-  const appliedPaceRows = useMemo(() => {
-    return PACE_OPTIONS.map((creditsPerTerm) => {
-      const fullDegree = calculateFullDegree(
-        programKey,
-        degreeCreditsByProgram[programKey],
-        creditsPerTerm,
-        0,
-        true,
-        3,
-        residency
-      );
-      const finishTerm = getFinishTerm(startTerm, fullDegree.numberOfTerms);
-      return {
-        creditsPerTerm,
-        finishTerm,
-        fullDegree
-      };
-    });
-  }, [programKey, startTerm, residency]);
-
-  const selectedRow =
-    appliedPaceRows.find((row) => row.creditsPerTerm === selectedPace) ??
-    appliedPaceRows[0];
-  const selectedProgram = PROGRAMS.find((program) => program.key === programKey);
-  const mixedPlan = useMemo(
-    () =>
-      calculateMixedPlan(
-        programKey,
-        degreeCreditsByProgram[programKey],
-        startTerm,
-        mixedRows,
-        residency
-      ),
-    [programKey, startTerm, mixedRows, residency]
+  const paceRows = useMemo(
+    () => buildPaceRows(draft),
+    // buildPaceRows only reads these three fields.
+    [draft.programKey, draft.residency, draft.startTermKey]
   );
-  const draftMixedPlan = useMemo(
-    () =>
-      calculateMixedPlan(
-        draftProgramKey,
-        degreeCreditsByProgram[draftProgramKey],
-        draftStartTerm,
-        draftMixedRows,
-        draftResidency
-      ),
-    [draftProgramKey, draftStartTerm, draftMixedRows, draftResidency]
-  );
-  const activePlan =
-    paceMode === 'mixed'
-      ? mixedPlan
-      : {
-          numberOfTerms: selectedRow.fullDegree.numberOfTerms,
-          totalFees: selectedRow.fullDegree.totalFees,
-          totalTuition: selectedRow.fullDegree.totalTuition,
-          totalCost: selectedRow.fullDegree.totalCost,
-          averagePerTerm: selectedRow.fullDegree.averagePerTerm,
-          finishTerm: selectedRow.finishTerm,
-          feePayments: selectedRow.fullDegree.numberOfTerms,
-          plannedCredits: degreeCreditsByProgram[programKey],
-          creditsCovered: degreeCreditsByProgram[programKey],
-          schedule: []
-        };
-  const isMixedIncomplete = mixedPlan.creditsCovered < degreeCreditsByProgram[programKey];
-  const isDraftMixedIncomplete =
-    draftMixedPlan.creditsCovered < degreeCreditsByProgram[draftProgramKey];
+  const draftPlan = useMemo(() => resolvePlan(draft), [draft]);
+  const appliedPlan = useMemo(() => resolvePlan(applied), [applied]);
 
-  const handleApplyDraft = useCallback(() => {
-    shouldTrackPlanGenerated.current = true;
-    setProgramKey(draftProgramKey);
-    setStartTermKey(draftStartTermKey);
-    setResidency(draftResidency);
-    setSelectedPace(draftSelectedPace);
-    setPaceMode(draftPaceMode);
-    setMixedRows(draftMixedRows);
-  }, [
-    draftMixedRows,
-    draftPaceMode,
-    draftProgramKey,
-    draftResidency,
-    draftSelectedPace,
-    draftStartTermKey
-  ]);
-
-  useEffect(() => {
-    if (!shouldTrackPlanGenerated.current) {
-      return;
+  const applyDraft = useCallback(() => {
+    setApplied(draft);
+    if (!draftPlan.isMixedIncomplete) {
+      reportPlanGenerated(import.meta.env.VITE_API_BASE_URL);
     }
-
-    const isPlanValid = paceMode !== 'mixed' || !isMixedIncomplete;
-    if (!isPlanValid) {
-      shouldTrackPlanGenerated.current = false;
-      return;
-    }
-
-    shouldTrackPlanGenerated.current = false;
-    reportPlanGenerated(import.meta.env.VITE_API_BASE_URL);
-  }, [activePlan, isMixedIncomplete, paceMode]);
-
-  const scheduleShareReset = useCallback(() => {
-    if (shareResetTimer.current) {
-      window.clearTimeout(shareResetTimer.current);
-    }
-    shareResetTimer.current = window.setTimeout(() => {
-      setShareStatus('idle');
-    }, 2000);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (shareResetTimer.current) {
-        window.clearTimeout(shareResetTimer.current);
-      }
-    };
-  }, []);
-
-  const handleShare = useCallback(async () => {
-    const url = buildShareUrl(
-      programKey,
-      startTermKey,
-      selectedPace,
-      paceMode,
-      mixedRows,
-      residency
-    );
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareStatus('copied');
-      scheduleShareReset();
-    } catch (error) {
-      console.error('Clipboard unavailable', error);
-      setShareStatus('error');
-      scheduleShareReset();
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }, [
-    mixedRows,
-    paceMode,
-    programKey,
-    residency,
-    scheduleShareReset,
-    selectedPace,
-    startTermKey
-  ]);
+  }, [draft, draftPlan.isMixedIncomplete]);
 
   return {
-    activePlan,
-    draftMixedPlan,
-    draftMixedRows,
-    draftPaceMode,
-    draftProgramKey,
-    draftResidency,
-    draftSelectedPace,
-    draftStartTermKey,
-    residency,
-    handleApplyDraft,
-    handleShare,
-    isDraftMixedIncomplete,
-    isMixedIncomplete,
-    mixedPlan,
-    mixedRows,
-    paceMode,
+    draft,
+    applied,
     paceRows,
-    programKey,
-    selectedPace,
-    selectedProgram,
-    shareStatus,
-    startTermKey,
-    setDraftMixedRows,
-    setDraftPaceMode,
-    setDraftProgramKey,
-    setDraftResidency,
-    setDraftSelectedPace,
-    setDraftStartTermKey,
-    setMixedRows,
-    setPaceMode,
-    setProgramKey,
-    setSelectedPace,
-    setStartTermKey
+    draftPlan,
+    appliedPlan,
+    updateDraft,
+    updateDraftMixedRows,
+    applyDraft
   };
 };

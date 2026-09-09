@@ -14,7 +14,8 @@ npm run dev
 ## Workspaces
 - Run web-specific commands: `npm --workspace apps/web run <script>`
 - Run API-specific commands: `npm --workspace apps/api run <script>`
-- Run every workspace's tests once: `npm run test:run`
+- Run every workspace's tests once: `npm run test:run`; end-to-end: `npm run test:e2e`
+- CI (`.github/workflows/ci.yml`) runs typecheck, unit, and e2e tests on every push and PR.
 
 ## Analytics + Usage Metrics
 - Umami (`cloud.umami.is/script.js` in `apps/web/index.html`) records page views and the `plan_generated` event for the hosted dashboard. Nothing reads Umami back — its API is Pro-only.

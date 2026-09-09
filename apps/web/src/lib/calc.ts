@@ -1,32 +1,32 @@
 import {
+  CURRENT_RATES,
   DEFAULT_RESIDENCY,
-  MAX_CREDITS_PER_TERM,
-  MAX_TERMS,
-  degreeCreditsByProgram,
   getPerCreditRate,
-  onlineLearningFeeRule,
-  perCreditRateByProgram,
   type ProgramKey,
+  type RateTable,
   type Residency
 } from '../data/rates';
 
-export type Mode = 'per-term' | 'full-degree';
+export const roundCents = (value: number): number => Math.round(value * 100) / 100;
 
-export type ScenarioInput = {
-  id: string;
-  label: string;
-  programKey: ProgramKey;
-  credits: number;
-  creditsPerTerm: number;
-  terms: number;
-  useAutoTerms: boolean;
-  termsPerYear: 2 | 3;
+export const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(value);
+
+export type TermCost = {
+  tuition: number;
+  fee: number;
+  total: number;
 };
 
-export type PerTermResult = {
-  tuition: number;
-  onlineLearningFee: number;
-  total: number;
+export type FullDegreeInput = {
+  programKey: ProgramKey;
+  creditsPerTerm: number;
+  residency?: Residency;
+  /** Defaults to the program's degree requirement. */
+  totalCredits?: number;
 };
 
 export type FullDegreeResult = {
@@ -36,145 +36,62 @@ export type FullDegreeResult = {
   totalCost: number;
   averagePerTerm: number;
   numberOfTerms: number;
-  timeToGraduateYears: number;
-  timeToGraduateMonths: number;
 };
 
-export type ScenarioValidation = {
-  creditsError?: string;
-  creditsPerTermError?: string;
-  termsError?: string;
-  programError?: string;
+const EMPTY_TERM: TermCost = { tuition: 0, fee: 0, total: 0 };
+
+const EMPTY_DEGREE: FullDegreeResult = {
+  totalTuition: 0,
+  feePerTerm: 0,
+  totalFees: 0,
+  totalCost: 0,
+  averagePerTerm: 0,
+  numberOfTerms: 0
 };
 
-export const formatCurrency = (value: number): string =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(value);
-
-export const formatTermDuration = (years: number, months: number): string => {
-  if (years <= 0 && months <= 0) {
-    return '—';
-  }
-  const yearLabel = years === 1 ? 'year' : 'years';
-  const monthLabel = months === 1 ? 'month' : 'months';
-  if (years > 0 && months > 0) {
-    return `${years} ${yearLabel} ${months} ${monthLabel}`;
-  }
-  if (years > 0) {
-    return `${years} ${yearLabel}`;
-  }
-  return `${months} ${monthLabel}`;
-};
-
-export const getOnlineLearningFee = (credits: number): number => {
+export const getOnlineLearningFee = (credits: number, rates: RateTable = CURRENT_RATES): number => {
   if (!Number.isFinite(credits) || credits <= 0) {
     return 0;
   }
-  return credits < onlineLearningFeeRule.thresholdCredits
-    ? onlineLearningFeeRule.belowThresholdFee
-    : onlineLearningFeeRule.atOrAboveThresholdFee;
+  const rule = rates.onlineLearningFee;
+  return credits < rule.thresholdCredits ? rule.belowThresholdFee : rule.atOrAboveThresholdFee;
 };
 
-export const calculatePerTerm = (
+/** Tuition + online learning fee for one term at the given credit load. */
+export const calculateTermCost = (
   programKey: ProgramKey,
   credits: number,
-  residency: Residency = DEFAULT_RESIDENCY
-): PerTermResult => {
+  residency: Residency = DEFAULT_RESIDENCY,
+  rates: RateTable = CURRENT_RATES
+): TermCost => {
   if (!Number.isFinite(credits) || credits <= 0) {
-    return { tuition: 0, onlineLearningFee: 0, total: 0 };
+    return EMPTY_TERM;
   }
-  const tuition = Math.round(getPerCreditRate(programKey, residency) * credits * 100) / 100;
-  const onlineLearningFee = getOnlineLearningFee(credits);
-  const total = Math.round((tuition + onlineLearningFee) * 100) / 100;
-  return { tuition, onlineLearningFee, total };
+  const tuition = roundCents(getPerCreditRate(programKey, residency, rates) * credits);
+  const fee = getOnlineLearningFee(credits, rates);
+  return { tuition, fee, total: roundCents(tuition + fee) };
 };
 
+/** Whole-degree totals when every term carries the same credit load. */
 export const calculateFullDegree = (
-  programKey: ProgramKey,
-  totalCredits: number,
-  creditsPerTerm: number,
-  termsInput: number,
-  useAutoTerms: boolean,
-  termsPerYear: number,
-  residency: Residency = DEFAULT_RESIDENCY
+  { programKey, creditsPerTerm, residency = DEFAULT_RESIDENCY, totalCredits }: FullDegreeInput,
+  rates: RateTable = CURRENT_RATES
 ): FullDegreeResult => {
-  if (!Number.isFinite(totalCredits) || totalCredits <= 0) {
-    return {
-      totalTuition: 0,
-      feePerTerm: 0,
-      totalFees: 0,
-      totalCost: 0,
-      averagePerTerm: 0,
-      numberOfTerms: 0,
-      timeToGraduateYears: 0,
-      timeToGraduateMonths: 0
-    };
+  const credits = totalCredits ?? rates.degreeCredits[programKey];
+  if (!Number.isFinite(credits) || credits <= 0 || !Number.isFinite(creditsPerTerm) || creditsPerTerm <= 0) {
+    return EMPTY_DEGREE;
   }
-  const normalizedCreditsPerTerm = Number.isFinite(creditsPerTerm) ? creditsPerTerm : 0;
-  const numberOfTerms = useAutoTerms
-    ? normalizedCreditsPerTerm > 0
-      ? Math.ceil(totalCredits / normalizedCreditsPerTerm)
-      : 0
-    : Math.max(0, termsInput);
-  const feePerTerm = getOnlineLearningFee(normalizedCreditsPerTerm);
-  const totalTuition =
-    Math.round(getPerCreditRate(programKey, residency) * totalCredits * 100) / 100;
-  const totalFees = Math.round(feePerTerm * numberOfTerms * 100) / 100;
-  const totalCost = Math.round((totalTuition + totalFees) * 100) / 100;
-  const averagePerTerm =
-    numberOfTerms > 0 ? Math.round((totalCost / numberOfTerms) * 100) / 100 : 0;
-  const rawMonths =
-    numberOfTerms > 0 && termsPerYear > 0 ? Math.round((numberOfTerms / termsPerYear) * 12) : 0;
-  const timeToGraduateYears = Math.floor(rawMonths / 12);
-  const timeToGraduateMonths = rawMonths % 12;
-
+  const numberOfTerms = Math.ceil(credits / creditsPerTerm);
+  const feePerTerm = getOnlineLearningFee(creditsPerTerm, rates);
+  const totalTuition = roundCents(getPerCreditRate(programKey, residency, rates) * credits);
+  const totalFees = roundCents(feePerTerm * numberOfTerms);
+  const totalCost = roundCents(totalTuition + totalFees);
   return {
     totalTuition,
     feePerTerm,
     totalFees,
     totalCost,
-    averagePerTerm,
-    numberOfTerms,
-    timeToGraduateYears,
-    timeToGraduateMonths
+    averagePerTerm: roundCents(totalCost / numberOfTerms),
+    numberOfTerms
   };
 };
-
-export const validateScenario = (scenario: ScenarioInput, mode: Mode): ScenarioValidation => {
-  const errors: ScenarioValidation = {};
-  if (!perCreditRateByProgram[scenario.programKey]) {
-    errors.programError = 'Select a valid program.';
-  }
-  if (mode === 'per-term') {
-    if (!Number.isFinite(scenario.credits)) {
-      errors.creditsError = 'Enter a numeric credit value.';
-    } else if (scenario.credits < 1) {
-      errors.creditsError = 'Credits must be at least 1.';
-    } else if (scenario.credits > MAX_CREDITS_PER_TERM) {
-      errors.creditsError = `Credits cannot exceed ${MAX_CREDITS_PER_TERM}.`;
-    }
-  } else {
-    if (!Number.isFinite(scenario.creditsPerTerm)) {
-      errors.creditsPerTermError = 'Enter a numeric credit value.';
-    } else if (scenario.creditsPerTerm < 1) {
-      errors.creditsPerTermError = 'Credits per term must be at least 1.';
-    } else if (scenario.creditsPerTerm > MAX_CREDITS_PER_TERM) {
-      errors.creditsPerTermError = `Credits per term cannot exceed ${MAX_CREDITS_PER_TERM}.`;
-    }
-    if (!scenario.useAutoTerms) {
-      if (!Number.isFinite(scenario.terms)) {
-        errors.termsError = 'Enter a numeric term count.';
-      } else if (scenario.terms < 1) {
-        errors.termsError = 'Terms must be at least 1.';
-      } else if (scenario.terms > MAX_TERMS) {
-        errors.termsError = `Terms cannot exceed ${MAX_TERMS}.`;
-      }
-    }
-  }
-  return errors;
-};
-
-export const getProgramCredits = (programKey: ProgramKey): number =>
-  degreeCreditsByProgram[programKey];

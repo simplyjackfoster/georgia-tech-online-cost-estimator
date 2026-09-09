@@ -1,25 +1,65 @@
 import {
+  CURRENT_RATES,
   DEFAULT_RESIDENCY,
   START_TERMS,
-  getPerCreditRate,
+  isProgramKey,
+  isResidency,
   type ProgramKey,
+  type RateTable,
   type Residency,
   type StartTermOption,
   type TermSeason
 } from '../data/rates';
-import { getOnlineLearningFee } from './calc';
+import { calculateFullDegree, calculateTermCost, roundCents, type FullDegreeResult } from './calc';
+import {
+  DEFAULT_MIXED_ROWS,
+  parseMixedRows,
+  serializeMixedRows,
+  type MixedLoadRow
+} from './mixedRows';
 
 export const PACE_OPTIONS = [3, 6, 9] as const;
+export type PaceOption = (typeof PACE_OPTIONS)[number];
+export const isPaceOption = (value: unknown): value is PaceOption =>
+  PACE_OPTIONS.includes(value as PaceOption);
+
+export type PaceMode = 'constant' | 'mixed';
+export const isPaceMode = (value: unknown): value is PaceMode =>
+  value === 'constant' || value === 'mixed';
+
 export const TERM_SEQUENCE: TermSeason[] = ['Spring', 'Summer', 'Fall'];
+export const TERMS_PER_YEAR = TERM_SEQUENCE.length;
 export const DEFAULT_START_TERM_KEY = 'spring-2026';
 
-export type MixedLoadRow = {
-  id: string;
-  terms: number;
-  creditsPerTerm: number;
+/** Everything the user chooses. Serializes to/from the share URL. */
+export type PlanSelection = {
+  programKey: ProgramKey;
+  startTermKey: string;
+  residency: Residency;
+  pace: PaceOption;
+  paceMode: PaceMode;
+  mixedRows: MixedLoadRow[];
 };
 
-export type MixedPlanResult = {
+export const DEFAULT_SELECTION: PlanSelection = {
+  programKey: 'omscs',
+  startTermKey: DEFAULT_START_TERM_KEY,
+  residency: DEFAULT_RESIDENCY,
+  pace: 6,
+  paceMode: 'constant',
+  mixedRows: DEFAULT_MIXED_ROWS
+};
+
+export type ScheduledTerm = {
+  termLabel: string;
+  credits: number;
+  tuition: number;
+  fee: number;
+  total: number;
+};
+
+/** The resolved plan shown in the summary, for either pace mode. */
+export type PlanResult = {
   numberOfTerms: number;
   totalFees: number;
   totalTuition: number;
@@ -29,161 +69,154 @@ export type MixedPlanResult = {
   feePayments: number;
   plannedCredits: number;
   creditsCovered: number;
-  schedule: Array<{
-    termLabel: string;
-    credits: number;
-    tuition: number;
-    fee: number;
-    total: number;
-  }>;
+  schedule: ScheduledTerm[];
+};
+
+export type PaceRow = {
+  creditsPerTerm: PaceOption;
+  finishTerm: StartTermOption;
+  fullDegree: FullDegreeResult;
+};
+
+export const resolveStartTerm = (startTermKey: string): StartTermOption =>
+  START_TERMS.find((term) => term.key === startTermKey) ??
+  START_TERMS.find((term) => term.key === DEFAULT_START_TERM_KEY) ??
+  START_TERMS[0];
+
+export const buildTermLabel = (startTerm: StartTermOption, offset: number): string => {
+  const targetIndex = TERM_SEQUENCE.indexOf(startTerm.season) + offset;
+  const season = TERM_SEQUENCE[((targetIndex % TERMS_PER_YEAR) + TERMS_PER_YEAR) % TERMS_PER_YEAR];
+  return `${season} ${startTerm.year + Math.floor(targetIndex / TERMS_PER_YEAR)}`;
 };
 
 export const getFinishTerm = (startTerm: StartTermOption, numberOfTerms: number): StartTermOption => {
   if (numberOfTerms <= 1) {
     return startTerm;
   }
-  const startIndex = TERM_SEQUENCE.indexOf(startTerm.season);
-  const finishIndex = startIndex + (numberOfTerms - 1);
-  const yearOffset = Math.floor(finishIndex / TERM_SEQUENCE.length);
-  const season = TERM_SEQUENCE[finishIndex % TERM_SEQUENCE.length];
-  const year = startTerm.year + yearOffset;
+  const finishIndex = TERM_SEQUENCE.indexOf(startTerm.season) + (numberOfTerms - 1);
+  const season = TERM_SEQUENCE[finishIndex % TERMS_PER_YEAR];
+  const year = startTerm.year + Math.floor(finishIndex / TERMS_PER_YEAR);
+  return { key: `${season.toLowerCase()}-${year}`, season, year, label: `${season} ${year}` };
+};
+
+export const parseSelection = (search: string): PlanSelection => {
+  const params = new URLSearchParams(search);
+  const program = params.get('program');
+  const start = params.get('start');
+  const residency = params.get('residency');
+  const pace = Number(params.get('pace'));
+  const mode = params.get('mode');
+  const mixedRows = parseMixedRows(params.get('mixed'));
+
   return {
-    key: `${season.toLowerCase()}-${year}`,
-    season,
-    year,
-    label: `${season} ${year}`
+    programKey: isProgramKey(program) ? program : DEFAULT_SELECTION.programKey,
+    startTermKey: START_TERMS.some((term) => term.key === start)
+      ? (start as string)
+      : DEFAULT_SELECTION.startTermKey,
+    residency: isResidency(residency) ? residency : DEFAULT_SELECTION.residency,
+    pace: isPaceOption(pace) ? pace : DEFAULT_SELECTION.pace,
+    paceMode: isPaceMode(mode) ? mode : DEFAULT_SELECTION.paceMode,
+    mixedRows: mixedRows.length > 0 ? mixedRows : DEFAULT_SELECTION.mixedRows
   };
 };
 
-export const buildTermLabel = (startTerm: StartTermOption, offset: number): string => {
-  const startIndex = TERM_SEQUENCE.indexOf(startTerm.season);
-  const targetIndex = startIndex + offset;
-  const yearOffset = Math.floor(targetIndex / TERM_SEQUENCE.length);
-  const season = TERM_SEQUENCE[((targetIndex % TERM_SEQUENCE.length) + TERM_SEQUENCE.length) % TERM_SEQUENCE.length];
-  const year = startTerm.year + yearOffset;
-  return `${season} ${year}`;
+export const buildShareQuery = (selection: PlanSelection): string => {
+  const params = new URLSearchParams({
+    program: selection.programKey,
+    start: selection.startTermKey,
+    pace: String(selection.pace),
+    mode: selection.paceMode,
+    residency: selection.residency
+  });
+  if (selection.paceMode === 'mixed') {
+    params.set('mixed', serializeMixedRows(selection.mixedRows));
+  }
+  return params.toString();
 };
 
-export const buildShareUrl = (
-  programKey: ProgramKey,
-  startTermKey: string,
-  pace: number,
-  mode: 'constant' | 'mixed',
-  mixedRows: MixedLoadRow[],
-  residency: Residency = DEFAULT_RESIDENCY
-): string => {
-  const params = new URLSearchParams();
-  params.set('program', programKey);
-  params.set('start', startTermKey);
-  params.set('pace', String(pace));
-  params.set('mode', mode);
-  params.set('residency', residency);
-  if (mode === 'mixed') {
-    const serialized = mixedRows
-      .map((row) => `${row.terms}x${row.creditsPerTerm}`)
-      .join(',');
-    params.set('mixed', serialized);
-  }
-  const query = params.toString();
-  return `${window.location.origin}${window.location.pathname}${query ? `?${query}` : ''}`;
+export const buildShareUrl = (selection: PlanSelection): string =>
+  `${window.location.origin}${window.location.pathname}?${buildShareQuery(selection)}`;
+
+export const buildPaceRows = (
+  { programKey, residency, startTermKey }: Pick<PlanSelection, 'programKey' | 'residency' | 'startTermKey'>,
+  rates: RateTable = CURRENT_RATES
+): PaceRow[] => {
+  const startTerm = resolveStartTerm(startTermKey);
+  return PACE_OPTIONS.map((creditsPerTerm) => {
+    const fullDegree = calculateFullDegree({ programKey, creditsPerTerm, residency }, rates);
+    return { creditsPerTerm, finishTerm: getFinishTerm(startTerm, fullDegree.numberOfTerms), fullDegree };
+  });
 };
 
 export const calculateMixedPlan = (
-  programKey: ProgramKey,
-  totalCredits: number,
-  startTerm: StartTermOption,
-  rows: MixedLoadRow[],
-  residency: Residency = DEFAULT_RESIDENCY
-): MixedPlanResult => {
-  const perCreditRate = getPerCreditRate(programKey, residency);
-  const sanitizedRows = rows.map((row) => ({
-    ...row,
-    terms: Number.isFinite(row.terms) ? Math.max(0, row.terms) : 0,
-    creditsPerTerm: Number.isFinite(row.creditsPerTerm) ? Math.max(0, row.creditsPerTerm) : 0
-  }));
-  const plannedCredits = sanitizedRows.reduce(
-    (sum, row) => sum + row.terms * row.creditsPerTerm,
+  { programKey, residency, startTermKey, mixedRows }: Omit<PlanSelection, 'pace' | 'paceMode'>,
+  rates: RateTable = CURRENT_RATES
+): PlanResult => {
+  const totalCredits = rates.degreeCredits[programKey];
+  const startTerm = resolveStartTerm(startTermKey);
+  const plannedCredits = mixedRows.reduce(
+    (sum, row) => sum + Math.max(0, row.terms) * Math.max(0, row.creditsPerTerm),
     0
   );
   let creditsRemaining = totalCredits;
   let totalFees = 0;
   let totalTuition = 0;
-  let numberOfTerms = 0;
-  const schedule: MixedPlanResult['schedule'] = [];
+  const schedule: ScheduledTerm[] = [];
 
-  for (const row of sanitizedRows) {
-    for (let termIndex = 0; termIndex < row.terms; termIndex += 1) {
-      if (creditsRemaining <= 0) {
-        break;
-      }
-      numberOfTerms += 1;
-      const creditsThisTerm = Math.min(row.creditsPerTerm, creditsRemaining);
-      const fee = getOnlineLearningFee(creditsThisTerm);
-      const tuition = Math.round(perCreditRate * creditsThisTerm * 100) / 100;
-      const total = Math.round((tuition + fee) * 100) / 100;
-      totalTuition = Math.round((totalTuition + tuition) * 100) / 100;
-      totalFees = Math.round((totalFees + fee) * 100) / 100;
-      schedule.push({
-        termLabel: buildTermLabel(startTerm, numberOfTerms - 1),
-        credits: creditsThisTerm,
-        tuition,
-        fee,
-        total
-      });
-      creditsRemaining -= creditsThisTerm;
-    }
-    if (creditsRemaining <= 0) {
-      break;
+  for (const row of mixedRows) {
+    for (let termIndex = 0; termIndex < row.terms && creditsRemaining > 0; termIndex += 1) {
+      const credits = Math.min(Math.max(0, row.creditsPerTerm), creditsRemaining);
+      const cost = calculateTermCost(programKey, credits, residency, rates);
+      totalTuition = roundCents(totalTuition + cost.tuition);
+      totalFees = roundCents(totalFees + cost.fee);
+      schedule.push({ termLabel: buildTermLabel(startTerm, schedule.length), credits, ...cost });
+      creditsRemaining -= credits;
     }
   }
 
-  const creditsCovered = totalCredits - Math.max(creditsRemaining, 0);
-  const totalCost = Math.round((totalTuition + totalFees) * 100) / 100;
-  const averagePerTerm =
-    numberOfTerms > 0 ? Math.round((totalCost / numberOfTerms) * 100) / 100 : 0;
-  const finishTerm = getFinishTerm(startTerm, Math.max(numberOfTerms, 1));
-
+  const numberOfTerms = schedule.length;
+  const totalCost = roundCents(totalTuition + totalFees);
   return {
     numberOfTerms,
     totalFees,
     totalTuition,
     totalCost,
-    averagePerTerm,
-    finishTerm,
+    averagePerTerm: numberOfTerms > 0 ? roundCents(totalCost / numberOfTerms) : 0,
+    finishTerm: getFinishTerm(startTerm, Math.max(numberOfTerms, 1)),
     feePayments: numberOfTerms,
     plannedCredits,
-    creditsCovered,
+    creditsCovered: totalCredits - Math.max(creditsRemaining, 0),
     schedule
   };
 };
 
-export const parseMixedRows = (mixedParam: string | null): MixedLoadRow[] => {
-  if (!mixedParam) {
-    return [];
-  }
-  const parsedRows = mixedParam
-    .split(',')
-    .map((segment, index) => {
-      const [termsRaw, creditsRaw] = segment.split('x');
-      const terms = Number(termsRaw);
-      const creditsPerTerm = Number(creditsRaw);
-      if (!Number.isFinite(terms) || !Number.isFinite(creditsPerTerm)) {
-        return null;
-      }
-      return {
-        id: `row-${index + 1}`,
-        terms: Math.max(0, terms),
-        creditsPerTerm: Math.max(0, creditsPerTerm)
-      } as MixedLoadRow;
-    })
-    .filter((row): row is MixedLoadRow => Boolean(row));
-  return parsedRows;
+const constantPlan = (row: PaceRow, totalCredits: number): PlanResult => ({
+  numberOfTerms: row.fullDegree.numberOfTerms,
+  totalFees: row.fullDegree.totalFees,
+  totalTuition: row.fullDegree.totalTuition,
+  totalCost: row.fullDegree.totalCost,
+  averagePerTerm: row.fullDegree.averagePerTerm,
+  finishTerm: row.finishTerm,
+  feePayments: row.fullDegree.numberOfTerms,
+  plannedCredits: totalCredits,
+  creditsCovered: totalCredits,
+  schedule: []
+});
+
+export type ResolvedPlan = {
+  plan: PlanResult;
+  /** True when a mixed schedule doesn't cover the degree's credits. */
+  isMixedIncomplete: boolean;
 };
 
-export const resolveStartTerm = (startTermKey: string): StartTermOption => {
-  return (
-    START_TERMS.find((term) => term.key === startTermKey) ??
-    START_TERMS.find((term) => term.key === DEFAULT_START_TERM_KEY) ??
-    START_TERMS[0]
-  );
+/** Turns a selection into the plan the summary displays. */
+export const resolvePlan = (selection: PlanSelection, rates: RateTable = CURRENT_RATES): ResolvedPlan => {
+  const totalCredits = rates.degreeCredits[selection.programKey];
+  if (selection.paceMode === 'mixed') {
+    const plan = calculateMixedPlan(selection, rates);
+    return { plan, isMixedIncomplete: plan.creditsCovered < totalCredits };
+  }
+  const rows = buildPaceRows(selection, rates);
+  const row = rows.find((candidate) => candidate.creditsPerTerm === selection.pace) ?? rows[0];
+  return { plan: constantPlan(row, totalCredits), isMixedIncomplete: false };
 };

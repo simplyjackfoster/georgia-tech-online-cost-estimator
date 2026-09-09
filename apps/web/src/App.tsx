@@ -6,68 +6,39 @@ import PlanConfigurator from './components/PlanConfigurator';
 import PlanSummary from './components/PlanSummary';
 import StickyPlanBar from './components/StickyPlanBar';
 import { usePlanState } from './hooks/usePlanState';
+import { useShareLink } from './hooks/useShareLink';
+
+const SUMMARY_ID = 'plan-summary';
 
 const App: React.FC = () => {
-  const {
-    activePlan,
-    draftMixedRows,
-    draftPaceMode,
-    draftProgramKey,
-    draftResidency,
-    draftSelectedPace,
-    draftStartTermKey,
-    handleApplyDraft,
-    handleShare,
-    isDraftMixedIncomplete,
-    mixedPlan,
-    paceMode,
-    paceRows,
-    residency,
-    selectedProgram,
-    shareStatus,
-    setDraftMixedRows,
-    setDraftPaceMode,
-    setDraftProgramKey,
-    setDraftResidency,
-    setDraftSelectedPace,
-    setDraftStartTermKey
-  } = usePlanState();
+  const { draft, applied, paceRows, draftPlan, appliedPlan, updateDraft, updateDraftMixedRows, applyDraft } =
+    usePlanState();
+  const { shareStatus, share } = useShareLink(applied);
 
   return (
     <div className="min-h-screen bg-tech-white text-tech-navy">
       <div className="mx-auto flex min-h-screen max-w-[1320px] flex-col px-4 py-4">
-        <Header onShare={handleShare} shareStatus={shareStatus} />
+        <Header onShare={share} shareStatus={shareStatus} />
 
         <main className="dashboard-grid mt-3 grid flex-1 gap-4 pb-24 sm:pb-0 lg:grid-cols-[minmax(360px,1fr)_minmax(360px,1fr)_minmax(360px,1fr)]">
           <div className="order-2 sm:order-1">
             <PlanConfigurator
-              draftProgramKey={draftProgramKey}
-              draftStartTermKey={draftStartTermKey}
-              draftResidency={draftResidency}
-              onDraftProgramChange={setDraftProgramKey}
-              onDraftStartTermChange={setDraftStartTermKey}
-              onDraftResidencyChange={setDraftResidency}
-              onApplyDraft={handleApplyDraft}
-              paceMode={draftPaceMode}
-              onPaceModeChange={setDraftPaceMode}
+              draft={draft}
               paceRows={paceRows}
-              selectedPace={draftSelectedPace}
-              onSelectPace={setDraftSelectedPace}
-              mixedRows={draftMixedRows}
-              onMixedRowsChange={setDraftMixedRows}
-              programKey={draftProgramKey}
-              isMixedIncomplete={isDraftMixedIncomplete}
+              isMixedIncomplete={draftPlan.isMixedIncomplete}
+              onChange={updateDraft}
+              onMixedRowsChange={updateDraftMixedRows}
+              onApply={applyDraft}
             />
           </div>
 
           <div className="order-1 sm:order-2">
             <PlanSummary
-              id="plan-summary"
-              activePlan={activePlan}
-              selectedProgramKey={selectedProgram?.key}
-              residency={residency}
-              paceMode={paceMode}
-              mixedSchedule={mixedPlan.schedule}
+              id={SUMMARY_ID}
+              plan={appliedPlan.plan}
+              programKey={applied.programKey}
+              residency={applied.residency}
+              paceMode={applied.paceMode}
             />
           </div>
 
@@ -77,14 +48,11 @@ const App: React.FC = () => {
         </main>
 
         <StickyPlanBar
-          totalCost={activePlan.totalCost}
-          finishLabel={activePlan.finishTerm.label}
-          onCopyShare={handleShare}
+          totalCost={appliedPlan.plan.totalCost}
+          finishLabel={appliedPlan.plan.finishTerm.label}
+          onCopyShare={share}
           onViewDetails={() => {
-            document.getElementById('plan-summary')?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start'
-            });
+            document.getElementById(SUMMARY_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
         />
 

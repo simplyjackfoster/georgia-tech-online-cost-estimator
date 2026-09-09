@@ -73,11 +73,14 @@ const isCacheFresh = (entry: CacheEntry | null, days: number) => {
   return Date.now() - entry.timestamp < CACHE_TTL_MS;
 };
 
-export const usePlansGeneratedCount = (days: number = DEFAULT_DAYS) => {
+export const usePlansGeneratedCount = (
+  days: number = DEFAULT_DAYS,
+  apiBaseUrl: string | undefined = import.meta.env.VITE_API_BASE_URL
+) => {
   const metricsUrl = useMemo(() => {
-    const baseUrl = plansGeneratedUrl(import.meta.env.VITE_API_BASE_URL);
+    const baseUrl = plansGeneratedUrl(apiBaseUrl);
     return baseUrl ? `${baseUrl}?days=${days}` : '';
-  }, [days]);
+  }, [apiBaseUrl, days]);
   const initialCache = isCacheFresh(cachedResult, days) ? cachedResult : null;
   const [count, setCount] = useState<number | null>(initialCache?.count ?? null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
